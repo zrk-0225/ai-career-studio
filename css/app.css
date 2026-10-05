@@ -2224,6 +2224,108 @@ mark {
 .weight-note__item i.w2 { background: var(--accent-2); }
 .weight-note__item i.w3 { background: var(--warn); }
 
+/* ============================================================
+ * 关于作者页
+ * ============================================================ */
+
+.about-who {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+/* 没有头像图片，就用代号做一个字标 */
+.about-avatar {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #fff;
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  box-shadow: 0 8px 22px rgba(124, 92, 255, .28);
+}
+.about-who__text h2 { font-size: 22px; margin-bottom: 6px; }
+.about-who__text p { font-size: 13.5px; color: var(--text-muted); }
+
+.about-lead {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.about-lead strong { color: var(--text); }
+
+/* 「我做的 / AI 做的」逐条对照。
+   左边一个短标签，右边一句话，标签列定宽所以右侧文字左边缘是对齐的。 */
+.duty-list { display: flex; flex-direction: column; gap: 10px; }
+.duty { display: flex; align-items: flex-start; gap: 10px; }
+.duty__tag {
+  flex: 0 0 auto;
+  min-width: 62px;
+  text-align: center;
+  padding: 3px 9px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.duty__tag--me { background: var(--accent-soft); color: var(--accent); }
+.duty__tag--ai { background: var(--chart-grid); color: var(--text-muted); }
+.duty__text { font-size: 13px; line-height: 1.65; color: var(--text-muted); padding-top: 2px; }
+
+.about-foot {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.about-foot strong { color: var(--text); }
+.about-foot code {
+  font-family: var(--mono, Consolas, monospace);
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--chart-grid);
+}
+
+/* 两个外链：整行可点，右边一个箭头 */
+.about-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  transition: border-color .16s, background .16s;
+}
+.about-link:hover { border-color: var(--accent); background: var(--panel-hover); }
+.about-link .icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--accent); }
+.about-link__label { font-size: 13px; font-weight: 600; white-space: nowrap; }
+/* 箭头推到最右边。窄屏下 URL 会单独占一行，那时靠 order 把它排到最后，
+   否则箭头会插在网址和标签中间，看着像断了一截。 */
+.about-link > .icon:last-child { margin-left: auto; }
+.about-link__url {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.about-link__note {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 0 2px 12px;
+  line-height: 1.6;
+}
+
 /* ---------- 响应式 ---------- */
 
 @media (max-width: 1080px) {
@@ -2315,6 +2417,11 @@ mark {
      手指容易点偏。手机上放大到 32px——卡片本身够宽，不会挤。 */
   .icon-btn--sm { width: 32px; height: 32px; }
   .icon-btn--label { height: 32px; }
+
+  /* 作者页：窄屏下图省事的横排会挤，改成竖排；URL 那行本来就会省略号截断 */
+  .about-who { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .about-link { flex-wrap: wrap; }
+  .about-link__url { flex: 1 1 100%; order: 3; }
 
   .assess-top--float { bottom: 10px; }
   .rating-grid { grid-template-columns: 1fr; }

@@ -1,7 +1,7 @@
 ﻿/* ============================================================
  * views/guide.js —— 使用指引
  * ------------------------------------------------------------
- * 第一次打开工作台，左边十二个导航项确实容易让人发懵。
+ * 第一次打开工作台，左边一长串导航项确实容易让人发懵。
  * 这一页回答三个问题：
  *   1. 我该按什么顺序做什么（三步上手，带完成状态）
  *   2. 以我现在的年级，最该看哪几页（个性化推荐）
@@ -30,7 +30,8 @@ AICS.Views = AICS.Views || {};
     { route: 'kanban',    icon: 'kanban',  name: '任务看板',  desc: '把规划拆成能落地的具体任务，支持截止日期、优先级、筛选' },
     { route: 'assistant', icon: 'bot',     name: 'AI 助手',   desc: '问职业规划相关的问题。默认离线知识库，可配置接入真实大模型' },
     { route: 'resources', icon: 'book',    name: '资源库',    desc: '课程、竞赛、数据集、论文、社区共 ' + AICS.resourceCount() + ' 条精选资源，可搜索' },
-    { route: 'report',    icon: 'file',    name: '我的规划书', desc: '把所有分析汇总成一份文档，可导出 Word / Markdown / PDF' }
+    { route: 'report',    icon: 'file',    name: '我的规划书', desc: '把所有分析汇总成一份文档，可导出 Word / Markdown / PDF' },
+    { route: 'about',     icon: 'star',    name: '关于作者',  desc: '这个作品是谁做的，以及人和 AI 工具各自负责了什么' }
   ];
 
   /* 按年级推荐重点看哪几页 */
@@ -256,7 +257,8 @@ AICS.Views = AICS.Views || {};
         '</section>' +
         (year ? '<section class="guide-section">' + yearFocusHtml(year) + '</section>' : '') +
         '<section class="guide-section">' +
-          '<h2>' + UI.icon('grid') + ' 每个页面是干什么的</h2>' +
+          /* 条数现算——写死的话每加一页就得回来改一次 */
+          '<h2>' + UI.icon('grid') + ' 这 ' + PAGES.length + ' 个页面分别是干什么的</h2>' +
           pagesHtml() +
         '</section>' +
         '<section class="guide-section">' +

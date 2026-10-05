@@ -269,7 +269,8 @@ window.AICS = window.AICS || {};
     kanban: '任务看板',
     assistant: 'AI 助手',
     resources: '资源库',
-    report: '我的规划书'
+    report: '我的规划书',
+    about: '关于作者'
   };
 
   /* 把用户的测评结果整理成系统提示词，让模型的回答真正"私人定制" */

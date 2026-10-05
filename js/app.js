@@ -22,7 +22,7 @@ window.AICS = window.AICS || {};
      因为它压根不是缓存问题，是另一个文件夹。
      现在设置弹窗底部和控制台都会打印这行字，打开一看就知道
      自己运行的是哪一版、要不要重新解压。 */
-  var BUILD = '2026-10-05.15';
+  var BUILD = '2026-10-05.16';
   AICS.BUILD = BUILD;
 
   /* 侧边栏导航配置，顺序就是显示顺序。
@@ -47,7 +47,8 @@ window.AICS = window.AICS || {};
     { group: '支持', items: [
       { route: 'assistant', name: 'AI 助手', icon: 'bot' },
       { route: 'resources', name: '资源库',   icon: 'book' },
-      { route: 'report',    name: '我的规划书', icon: 'file' }
+      { route: 'report',    name: '我的规划书', icon: 'file' },
+      { route: 'about',     name: '关于作者', icon: 'star' }
     ]}
   ];
 
