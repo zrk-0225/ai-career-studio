@@ -640,6 +640,12 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   margin: 24px 0 0;
   box-shadow: var(--shadow);
   z-index: 40;
+  /* 这条浮在底部，正文会从它下面滚过去。
+     原来它是吃点击的，结果**滚到它下面那一题的选项就点不动了**——
+     点了没反应，用户只会以为坏了（实测 1440×900 下有 5 个选项被整条盖住）。
+     它里面只有两行字和一根进度线，没有任何可点的东西，
+     所以干脆让点击穿透过去，底下的选项照常能选。 */
+  pointer-events: none;
 }
 .assess-top__info {
   display: flex;
@@ -2282,12 +2288,34 @@ mark {
   .add-task__row .input--sm { flex: 1 1 92px; }
   .add-task__row .date-field { flex: 1 1 132px; }
   .q { padding: 14px; }
-  .q__opts { gap: 6px; }
-  .opt { padding: 6px 11px; font-size: 12px; }
-  /* 手机上一行塞不下五列，改成两列。仍然是对齐的，只是排三行 */
+  /* 手机上一行塞不下五列，一律排成等宽的两列网格。
+     原来只有能力题是网格，兴趣/偏好题是 flex 自动换行——
+     后者的按钮宽度跟着文字走，排出来是"2+2+1"，每行宽窄不一，
+     最后一行只有一个孤零零吊在左边，看着不齐。
+     统一成网格后行数还是三行，但每一列左右都对齐。 */
+  .q__opts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  /* 能力题必须单独再说一遍两列：上面那条 .q__opts 选择器权重只有 (0,1,0)，
+     而桌面端那条 .q--ability .q__opts 是 (0,2,0)，
+     不加这一行的话手机上图省事的五列会赢，每列只剩 51px，锚点文字全挤烂。 */
   .q--ability .q__opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .opt { padding: 6px 11px; font-size: 12px; }
   .q--ability .opt { padding: 8px 11px; }
   .opt__anchor { font-size: 11px; }
+  /* 文字链接（「查看完整诊断 →」「改年级」这类）只有 13px 字号撑起来的 19px 高，
+     在手机上大约 3.5mm，手指点起来太窄。
+     加垂直 padding 把可点区域撑到 ~35px，再用等量负 margin 抵消——
+     inline-flex 在行内布局里用的是 margin 盒，所以行高和换行位置一点不变。 */
+  .link-btn { padding: 8px 0; margin: -8px 0; }
+
+  /* 任务卡片上那排小按钮（编辑 / 删除 / 换列箭头）只有 26px 高，约 4.7mm，
+     手指容易点偏。手机上放大到 32px——卡片本身够宽，不会挤。 */
+  .icon-btn--sm { width: 32px; height: 32px; }
+  .icon-btn--label { height: 32px; }
+
   .assess-top--float { bottom: 10px; }
   .rating-grid { grid-template-columns: 1fr; }
   .compare-grid { grid-template-columns: 1fr; }

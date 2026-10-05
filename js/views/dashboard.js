@@ -163,7 +163,9 @@ AICS.Views = AICS.Views || {};
             }).join('') +
           '</div>' +
         '</div>'
-      : '<div class="panel"><div class="panel__head"><h3>能力差距</h3>' + priorityHead + '</div>' +
+      /* 没有缺口时标题不能还叫"能力差距"——面板里明明白白写着"已经覆盖了"，
+         标题说"差距"是自相矛盾的。 */
+      : '<div class="panel"><div class="panel__head"><h3>暂无明显短板</h3>' + priorityHead + '</div>' +
         '<p class="muted">' + (pf.isTarget
           ? '你的能力已经覆盖了「' + UI.esc(pf.name) + '」的全部要求，接下来重点是做深项目、积累作品。'
           : '你的能力已经覆盖了第一档 ' + (pf.bandCount || 0) +

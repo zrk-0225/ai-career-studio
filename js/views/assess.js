@@ -86,7 +86,7 @@ AICS.Views = AICS.Views || {};
 
   /* 结果区第一句话。
      不说"最匹配的方向是 X"——实测第1名和第2名中位只差 0.7~1.4 分，
-     重答一次有 19%~40% 的概率换人。所以说"你属于第几档"，
+     重答一次有 17%~25% 的概率换人。所以说"你属于第几档"，
      档位才是稳的那个东西。 */
   function resultLine(analysis) {
     var band = analysis.topBand;

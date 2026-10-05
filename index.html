@@ -66,6 +66,13 @@
 <div class="app">
   <aside class="sidebar" id="sidebar"></aside>
 
+  <!-- 手机上拉开侧边栏时盖住右边内容的半透明遮罩，点它收起抽屉。
+       它必须待在 .app **里面**：.app 上有 z-index，会建立自己的层叠上下文，
+       抽屉的 z-index:100 只在 .app 内部有效。遮罩要是放在 .app 外面，
+       它就会盖在整个 .app（含抽屉）之上——连同它自带的 backdrop-filter，
+       结果是抽屉被糊成一片、还点不动。 -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
   <main class="main">
     <header class="topbar">
       <!-- 手机上才显示的汉堡按钮，用来拉出侧边栏 -->
@@ -93,9 +100,6 @@
     </div>
   </main>
 </div>
-
-<!-- 手机上拉开侧边栏时盖住内容的半透明遮罩，点它收起抽屉 -->
-<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
 <div id="modal-root"></div>
 <div id="toast-root" class="toast-root"></div>
