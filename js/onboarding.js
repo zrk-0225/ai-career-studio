@@ -19,7 +19,7 @@ window.AICS = window.AICS || {};
 
   /* 年级对算法的具体影响，写在向导里让用户明白为什么要填 */
   var YEAR_EXPLAIN = {
-    '大一': '能力还没成形，所以主要看兴趣和性格——这时候让你比能力没有意义',
+    '大一': '能力还没成形，所以主要看兴趣和性格，这时候比能力没有意义',
     '大二': '有基础了，但兴趣仍是主要判断依据，能力开始计入',
     '大三': '到了要定去向的时候，能力差距开始成为决定性因素',
     '大四': '求职看硬实力，能力占绝对主导，兴趣偏好只做参考'
@@ -35,7 +35,9 @@ window.AICS = window.AICS || {};
         '<div class="wizard__logo">' + UI.icon('sparkles') + '</div>' +
         '<h2>欢迎来到 AI 领航</h2>' +
         '<p class="wizard__lead">这是一个为人工智能专业学生做的职业规划工作台。' +
-          '做完一份 38 题的测评，它会告诉你三件事：</p>' +
+          /* 题数现算。全站别处都走 Calc.totalQuestions()，
+             这里抄了个固定值——加题之后向导上就挂着一个假数字。 */
+          '做完一份 ' + AICS.Calc.totalQuestions() + ' 题的测评，它会告诉你三件事：</p>' +
       '</div>' +
       '<div class="wizard__points">' +
         '<div class="wizard__point">' +
@@ -54,7 +56,8 @@ window.AICS = window.AICS || {};
         '<div class="wizard__point">' +
           '<span class="wizard__point-icon">' + UI.icon('calendar') + '</span>' +
           '<div><strong>大一到大四，一步步该做什么</strong>' +
-          '<em>26 项阶段任务，做完打勾，还能导出成规划书</em></div>' +
+          /* 条数现算，别抄一份——加任务时忘了改这里，向导上就挂着一个假数字 */
+          '<em>' + AICS.roadmapTotal() + ' 项通用阶段任务，还会按你的目标方向再补几项，做完打勾</em></div>' +
         '</div>' +
       '</div>' +
       '<p class="wizard__note">全程大约 12 分钟。随时可以关掉，下次打开接着做。</p>';
@@ -64,7 +67,7 @@ window.AICS = window.AICS || {};
     return '<div class="wizard__hero">' +
         '<div class="wizard__logo wizard__logo--ok">' + UI.icon('lock') + '</div>' +
         '<h2>你的数据只存在你自己的电脑上</h2>' +
-        '<p class="wizard__lead">这一点很重要，所以说在前面。</p>' +
+        '<p class="wizard__lead">在你开始填任何东西之前，先把这件事说清楚。</p>' +
       '</div>' +
       '<ul class="privacy-list">' +
         '<li>' + UI.icon('check') + '<span><strong>不上传服务器</strong>：' +

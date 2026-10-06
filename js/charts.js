@@ -321,6 +321,125 @@ window.AICS = window.AICS || {};
     register(canvas, draw);
   }
 
+  /* ---------- 四年时间轴 ----------
+     config = {
+       stages:     [{ year, color, done, total, percent }],
+       position:   0~1，0 = 刚入学、1 = 毕业；null 表示年级没填
+       milestones: [{ abs, name }]，abs 是入学后第几个月
+     }
+
+     只画色带、主轴和刻度，**文字说明全部交给 DOM**。两个原因：
+       · 轴上的标签挤不下——大三暑假在第 34 个月、秋招在第 36 个月，
+         只差两个月，两行字会直接叠在一起
+       · 文字放进 DOM 才能自动换行、能被读屏软件读出来；
+         画在 canvas 上就是一张图，对读屏等于不存在 */
+  function timeline(canvas, config) {
+    var draw = function () {
+      var p = prepare(canvas, 88);
+      var ctx = p.ctx, w = p.w;
+      var stages = config.stages || [];
+      if (!stages.length) return;
+
+      var padL = 5, padR = 5, padT = 8;
+      var bandH = 46;
+      var axisY = padT + bandH + 7;
+      var trackW = Math.max(40, w - padL - padR);
+      var unit = trackW / 48;                 // 一个月占多少像素
+
+      var gridColor = cssVar('--chart-grid', 'rgba(255,255,255,0.10)');
+      var axisColor = cssVar('--chart-axis', 'rgba(255,255,255,0.18)');
+      var textColor = cssVar('--text-muted', '#8b97b0');
+      var textStrong = cssVar('--text', '#e8eef8');
+      var compact = w < 460;
+
+      /* 四个学年的色带 */
+      stages.forEach(function (s, i) {
+        var x = padL + i * 12 * unit;
+        var bw = 12 * unit;
+
+        ctx.fillStyle = gridColor;
+        roundRect(ctx, x + 1, padT, bw - 2, bandH, 7);
+        ctx.fill();
+
+        /* 完成度用"水位"从下往上填，不是横条。
+           横条在这个形状里不好读——一格只有 12 个月宽，
+           横着填到一半和填满看着差不多；水位的高度差一眼就能比出来。 */
+        var ratio = Math.max(0, Math.min(1, (s.percent || 0) / 100));
+        if (ratio > 0) {
+          ctx.save();
+          roundRect(ctx, x + 1, padT, bw - 2, bandH, 7);
+          ctx.clip();
+          ctx.fillStyle = s.color + 'bb';
+          ctx.fillRect(x + 1, padT + bandH * (1 - ratio), bw - 2, bandH * ratio);
+          ctx.restore();
+        }
+
+        /* 学年名 + 完成度 */
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = textStrong;
+        ctx.font = (compact ? 11 : 12.5) + 'px system-ui, -apple-system, "Microsoft YaHei", sans-serif';
+        ctx.fillText(s.year, x + bw / 2, padT + bandH / 2 - (compact ? 7 : 8));
+        ctx.fillStyle = textColor;
+        ctx.font = (compact ? 9.5 : 10.5) + 'px system-ui, -apple-system, sans-serif';
+        ctx.fillText(s.done + '/' + s.total, x + bw / 2, padT + bandH / 2 + (compact ? 8 : 9));
+      });
+
+      /* 主轴 + 三个学年分界刻度 */
+      ctx.strokeStyle = axisColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, axisY);
+      ctx.lineTo(padL + trackW, axisY);
+      ctx.stroke();
+
+      for (var g = 1; g < 4; g++) {
+        var gx = padL + g * 12 * unit;
+        ctx.beginPath();
+        ctx.moveTo(gx, axisY - 3);
+        ctx.lineTo(gx, axisY + 3);
+        ctx.strokeStyle = axisColor;
+        ctx.stroke();
+      }
+
+      /* 关键节点：主轴下方一个小三角。
+         这里只标"有个节点"，不写名字——名字在下面的文字列表里，
+         两边分工，轴上就不会糊成一片。 */
+      (config.milestones || []).forEach(function (ms) {
+        if (ms.abs < 0 || ms.abs > 48) return;
+        var mx = padL + ms.abs * unit;
+        ctx.beginPath();
+        ctx.moveTo(mx, axisY + 2);
+        ctx.lineTo(mx - 3.5, axisY + 8);
+        ctx.lineTo(mx + 3.5, axisY + 8);
+        ctx.closePath();
+        ctx.fillStyle = axisColor;
+        ctx.fill();
+      });
+
+      /* 当前位置：一条贯穿色带的竖线 + 顶部圆点。
+         整张图里最该被一眼看到的就是它，所以用主色。 */
+      if (typeof config.position === 'number') {
+        var px = padL + Math.max(0, Math.min(1, config.position)) * 48 * unit;
+        var accent = cssVar('--accent', '#00e5ff');
+
+        ctx.beginPath();
+        ctx.moveTo(px, padT - 3);
+        ctx.lineTo(px, axisY);
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(px, padT - 3, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = accent;
+        ctx.fill();
+      }
+    };
+    draw();
+    register(canvas, draw);
+  }
+
   /* 画圆角矩形路径，条形图和卡片都用得到 */
   function roundRect(ctx, x, y, w, h, r) {
     r = Math.min(r, h / 2, w / 2);
@@ -357,6 +476,7 @@ window.AICS = window.AICS || {};
     donut: donut,
     bars: bars,
     line: line,
+    timeline: timeline,
     roundRect: roundRect,
     redrawAll: redrawAll,
     clear: function () { registry = []; }

@@ -55,14 +55,18 @@ window.AICS = window.AICS || {};
      典型波动在 5 分以内。所以"差 5 分以内"就是"答错一道题的量级"。 */
   var BAND_GAP = 5;
 
-  /* 把排好序的方向切成若干档，同档内不再排名次 */
-  function band(ranked) {
+  /* 把排好序的方向切成若干档，同档内不再排名次。
+
+     gap 可以不传，不传就用默认的 BAND_GAP。为什么要能传：
+     档位宽度应该跟着**这次作答的可靠程度**走，见 consistency()。 */
+  function band(ranked, gap) {
+    var g = (typeof gap === 'number') ? gap : BAND_GAP;
     var bands = [];
     ranked.forEach(function (r) {
       var last = bands[bands.length - 1];
       /* 和本档的第一名比，而不是和上一个比——
          否则分数会"一级一级往下滑"，把整条链并成一档 */
-      if (last && (last.top - r.total) <= BAND_GAP) last.items.push(r);
+      if (last && (last.top - r.total) <= g) last.items.push(r);
       else bands.push({ top: r.total, items: [r] });
     });
     bands.forEach(function (b, i) {
@@ -73,6 +77,82 @@ window.AICS = window.AICS || {};
       b.items.forEach(function (r) { r.band = i; });
     });
     return bands;
+  }
+
+  /* 作答质量决定档位该切多宽。
+
+     五档量表下，两个答案差 2 分就是"明显往两边去了"（比如一个偏
+     "更想钻研"、另一个也偏"更想钻研"，翻转后却对不上）。所以
+     一致性分数低的时候，说明这个人答题时心里的标准在漂。
+
+     对这种情况只能放宽：宁可把两个其实分得开的方向并成一档，
+     也不要拿一个自己都不稳的分数去排先后。放宽的代价是"少说了
+     一句话"，收紧的代价是"说了句错的"——这两个不是等价的选择。 */
+  function bandGapFor(score, flat) {
+    if (flat) return 9;                  // 全选同一档：压根没区分，最宽
+    if (score >= 80) return BAND_GAP;    // 认真答的，用默认值 5
+    if (score >= 60) return 6;
+    return 8;
+  }
+
+  /* 一致性档位对应的人话说明，界面上直接引用 */
+  var CONSISTENCY_LEVEL = {
+    good: '答案前后一致，这次结果可以放心看',
+    fair: '个别题目前后不太一致，参考着看',
+    poor: '答案前后矛盾较多，建议有空时重答一遍',
+    flat: '所有题都选了同一档，这样区分不出偏好，建议重答'
+  };
+
+  /* ------------------------------------------------------------
+   * 答题一致性：这份答卷自相矛盾得多不多
+   *
+   * 用偏好题算。三个轴各是一正一反成对出的（见 QUESTIONS_PREF
+   * 的 reverse 字段），两句问的其实是同一件事的两面。认真答的人
+   * 两个答案会落在轴的同一侧；一边选"更喜欢把难题吃透"、另一边
+   * 又选"更想快点做出来"，这就是自相矛盾。
+   *
+   * 这个数的用途不是给用户打分，是决定**这次结果能说到多细**。
+   * BAND_GAP 原来写死 5 分，依据是"加权平均后分数对单题变化的
+   * 典型波动在 5 分以内"——但那按认真作答的人估的。答案本身
+   * 就矛盾的人误差只会更大，还按 5 分切档等于假装它那么精确。
+   * ---------------------------------------------------------- */
+  function consistency(answers) {
+    var pairs = [
+      { a: 'p1', b: 'p2' },   // depth  轴
+      { a: 'p3', b: 'p4' },   // solo   轴
+      { a: 'p5', b: 'p6' }    // stable 轴
+    ];
+
+    var gaps = [];
+    pairs.forEach(function (p) {
+      var va = answers[p.a], vb = answers[p.b];
+      if (typeof va !== 'number' || typeof vb !== 'number') return;
+      /* p1 / p3 / p5 都是 reverse 题，翻转之后才和 p2 / p4 / p6 同向 */
+      gaps.push(Math.abs((6 - va) - vb) / 4);   // 0 = 一致，1 = 完全相反
+    });
+    if (!gaps.length) return null;
+
+    var avg = gaps.reduce(function (s, v) { return s + v; }, 0) / gaps.length;
+    var score = Math.round((1 - avg) * 100);
+
+    /* 全部题目选同一档：这不是"一致"，是没区分。
+       单独标出来是因为这类答卷反而**骗得过**矛盾度检测——
+       都选 3 的时候正反题翻转后还是 3 和 3，差值 0，看着满分。 */
+    var vals = Object.keys(answers).map(function (k) { return answers[k]; });
+    var flat = vals.length >= 10 && vals.every(function (v) { return v === vals[0]; });
+
+    var level = flat ? 'flat' : (score >= 80 ? 'good' : (score >= 60 ? 'fair' : 'poor'));
+
+    return {
+      score: score,
+      level: level,
+      text: CONSISTENCY_LEVEL[level],
+      flat: flat,
+      /* 明显对不上的轴数（差 2 分及以上），报告里直接引用 */
+      clashes: gaps.filter(function (g) { return g >= 0.5; }).length,
+      total: gaps.length,
+      gap: bandGapFor(score, flat)
+    };
   }
 
   /* 每个分项的一句话解释，界面上和报告里都会用到 */
@@ -292,7 +372,11 @@ window.AICS = window.AICS || {};
        原来这里固定用第一名，还有更严重的后果：把目标设成「算法工程师」的人，
        概览上推荐他去补「AI 产品经理」的产品思维和沟通表达，方向正好是反的。
        四个页面里只有概览这一处没跟着目标走（匹配诊断、规划书、四年规划都跟着）。 */
-    var bands = band(ranked);           // 先算档位，下面两种情况都要用
+    /* 先看这份答卷本身靠不靠得住，档位宽度跟着它走。
+       作答矛盾的答卷会把档位放宽，结果是"能说的结论变少"——
+       这正是想要的：不确定的时候少下判断，别硬给次序。 */
+    var cons = consistency(answers);
+    var bands = band(ranked, cons ? cons.gap : BAND_GAP);   // 下面两种情况都要用
 
     var targetDir = AICS.Directions.byId((state.profile || {}).targetId);
     var targetRank = targetDir
@@ -340,6 +424,9 @@ window.AICS = window.AICS || {};
          不写的话，"还差 55 分"到底是跟谁比，用户只能猜。 */
       priorityFor: priorityFor,
       weights: weights,
+      /* 这次答卷的可信度，以及它把档位撑到了多宽 */
+      consistency: cons,
+      bandGap: cons ? cons.gap : BAND_GAP,
       year: year,
       yearReason: WEIGHT_REASON[year] || '按通用标准计算',
       answeredAt: state.assess.finishedAt
@@ -452,6 +539,8 @@ window.AICS = window.AICS || {};
     WEIGHT_REASON: WEIGHT_REASON,
     BAND_GAP: BAND_GAP,
     band: band,
+    consistency: consistency,
+    CONSISTENCY_LEVEL: CONSISTENCY_LEVEL,
     /* 历史快照的时间排序，成长曲线那边也要用同一套 */
     byTime: byTime,
     weightsFor: weightsFor,

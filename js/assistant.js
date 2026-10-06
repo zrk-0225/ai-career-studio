@@ -102,13 +102,15 @@ window.AICS = window.AICS || {};
     var map = {
       name: profile.name || '同学',
       year: profile.year || '当前',
+      /* 题数也现算。知识库里写死的那个数字已经跟别处不一致过一次了 */
+      questions: AICS.Calc.totalQuestions(),
       /* 一句完整的"你匹配到哪一档"。
          这里原来是 {{top}}（方向名）和 {{topScore}}（分数）两个占位符，
          知识库模板写成"…的结果是 **{{top}}** 匹配度最高（{{topScore}} 分）"。
          后来 topScore 改成填档位名，模板没跟着改，于是回答里出现
          "（第 1 档（4 个方向并列） 分）"这种嵌套括号加断句错乱。
          改成填一整句，模板那边就不用再包括号、也不用补"分"字。 */
-      matchLine: '做完测评后，你在「匹配诊断」里的结果会告诉你答案——那才是一个客观起点。',
+      matchLine: '做完测评，去「匹配诊断」看结果。那是按你的答案算出来的，比凭感觉猜靠谱。',
       weak: '暂未测评',
       gapList: '完成测评后这里会列出你的优先补齐项'
     };
@@ -123,7 +125,9 @@ window.AICS = window.AICS || {};
       map.weak = analysis.weakest.name;
       map.gapList = analysis.priority.length
         ? analysis.priority.map(function (g) { return g.name + '（差 ' + g.gap + ' 分）'; }).join('、')
-        : '你的能力已经达到目标岗位要求，接下来重点是保持和做深项目';
+        /* 全站统一叫「目标方向」。这里原来写的是「目标岗位」——
+           本工具里并没有"岗位"这个设定，两套说法容易让人以为是两回事 */
+        : '你的能力已经达到目标方向的要求，接下来重点是保持和做深项目';
     }
     return String(text).replace(/\{\{(\w+)\}\}/g, function (whole, key) {
       return map[key] !== undefined ? map[key] : whole;
@@ -223,11 +227,190 @@ window.AICS = window.AICS || {};
     };
   }
 
+  /* ---------- 认识你数据的回答 ----------
+
+     有一类问题不用查知识库，拿你自己的工作台数据就能算出来：
+     "我离目标还差多少""先补什么""还剩多少时间""我进度到哪了"。
+
+     这类问题走关键词匹配反而答不准——知识库讲的是通用知识
+     （某个方向是干什么的、怎么准备实习），而这些问题的答案
+     只跟你一个人有关。放在 KB 匹配之前试一遍。 */
+
+  function needAssess() {
+    return '这个问题得看了你的测评结果才能答，现在还缺这份数据。\n\n' +
+      '去做一遍「自我认知」（' + AICS.Calc.totalQuestions() + ' 题，大概 12 分钟）。' +
+      '做完再问我一遍，我就能拿着你的兴趣、能力和偏好算给你看了。';
+  }
+
+  /* 参照物的一句话：目标方向优先，没有就用第一档的最低保底 */
+  function basisOf(analysis) {
+    var pf = analysis.priorityFor || {};
+    if (pf.isTarget) return '你的目标方向「' + pf.name + '」';
+    if (pf.bandName) {
+      return '第一档里要求最低的那个方向';
+    }
+    return '你现在的情况';
+  }
+
+  /* ① "我这个分数能上 X 吗" → 差多少 */
+  function gapAnswer(analysis) {
+    if (!analysis) return needAssess();
+
+    var pri = analysis.priority || [];
+    var head = '按' + basisOf(analysis) + '来看：';
+    if (!pri.length) {
+      return head + '\n\n**你要求的几项能力都已经达标了。**\n\n' +
+        '接下来把项目做深、做出能讲的东西。申请的时候，一个讲得透的项目' +
+        '比多考几分管用。';
+    }
+
+    return head + '\n\n' + pri.map(function (g) {
+      return '- **' + g.name + '**：你自评 ' + g.mine + ' 分，要求 ' + g.need +
+        ' 分，还差 **' + g.gap + ' 分**';
+    }).join('\n') +
+    '\n\n这些分数都是你自评的，跟岗位要求比出来的。看个大体方向就行，别当判决书。\n\n' +
+    '每一项具体怎么补，在「匹配诊断」的差距明细里。';
+  }
+
+  /* ② "我该先补什么" → 直接给动作 */
+  function priorityAnswer(analysis) {
+    if (!analysis) return needAssess();
+
+    var pri = (analysis.priority || []).slice(0, 2);
+    if (!pri.length) {
+      return basisOf(analysis) + '要的能力你都够了。\n\n' +
+        '接下来把做过的项目整理成能讲的东西：一份 README、一段三分钟的讲解、' +
+        '一张架构图。面试和复试问的都是这个。';
+    }
+
+    return '按' + basisOf(analysis) + '，最该先补的是这 ' + pri.length + ' 项：\n\n' +
+      pri.map(function (g, i) {
+        return (i + 1) + '. **' + g.name + '**（还差 ' + g.gap + ' 分）：' +
+          (AICS.DIM_ADVICE[g.key] || '');
+      }).join('\n\n') +
+      '\n\n「四年规划」里标着「补齐短板」的那几项，就是照这个加的，勾着往下做就行。' +
+      '做完在那一行点一下"做到什么程度了"，下次做测评我会提醒你重新估一下。';
+  }
+
+  /* ③ "我还有多少时间" → 用年级和月份推算 */
+  function timeAnswer(profile) {
+    var pos = AICS.termPosition(profile.year);
+    if (!pos) {
+      return '我还不知道你读大几，算不出来。\n\n' +
+        '去右上角「设置」里把年级填上。它不光影响时间推算，' +
+        '还会改变匹配算法的权重，大一和大四看的重点不一样。';
+    }
+
+    var now = new Date();
+    var left = AICS.MILESTONES.filter(function (ms) {
+      return AICS.monthsUntil(ms.abs, pos) >= 0;
+    });
+
+    var lines = ['按 9 月开学推算，你现在是 **' + pos.label + '**。', ''];
+
+    if (!left.length) {
+      lines.push('四年里的几个关键节点都已经过去了。');
+    } else {
+      var next = left[0];
+      var n = AICS.monthsUntil(next.abs, pos);
+      lines.push('最近的一个节点是 **' + next.name + '**，还有 **' + n + ' 个月**（' +
+        AICS.monthLabel(now, n) + '）。' + next.hint + '。');
+      if (left.length > 1) {
+        lines.push('');
+        lines.push('再往后：' + left.slice(1).map(function (ms) {
+          return ms.name + '（' + AICS.monthsUntil(ms.abs, pos) + ' 个月）';
+        }).join('、') + '。');
+      }
+    }
+
+    lines.push('');
+    lines.push('这个推算是按"国内大学 9 月开学"算的。春季入学或者休过学的同学，' +
+      '位置会偏，去设置里核对一下年级。');
+    lines.push('');
+    lines.push('完整的时间轴在「四年规划」页右上角切到「时间轴」视图。');
+    return lines.join('\n');
+  }
+
+  /* ④ "我进度到哪了" → 规划完成度 + 实践记录 */
+  function progressAnswer() {
+    var state = AICS.Store.get();
+    var roadmap = state.roadmap || {};
+    var stages = AICS.planFor(state);
+
+    var total = 0, done = 0;
+    stages.forEach(function (s) {
+      s.tasks.forEach(function (t) { total++; if (roadmap[t.id]) done++; });
+    });
+
+    var lines = ['四年规划：**' + done + ' / ' + total + '** 项已完成（' +
+      Math.round(total ? (done / total) * 100 : 0) + '%）。', ''];
+
+    stages.forEach(function (s) {
+      var d = s.tasks.filter(function (t) { return roadmap[t.id]; }).length;
+      lines.push('- ' + s.year + '：' + d + ' / ' + s.tasks.length);
+    });
+
+    /* 实践记录：这条是"勾了"和"真做过"的区别，值得单独说。
+
+       practiceOf 可能返回 null（那个维度的记录是空的），所以先过滤再拼。
+       存档里理论上不会有空记录——store 的清洗会丢掉计数为 0 的——
+       但那是靠数据不变式兜着，这里不该跟着依赖它。 */
+    var prac = state.practice || {};
+    var pracLines = Object.keys(prac).map(function (k) {
+      var p = AICS.practiceOf(k);
+      if (!p) return '';
+      var d = AICS.DIMS.filter(function (x) { return x.key === k; })[0];
+      return (d ? d.name : k) + '（' + p.text + '）';
+    }).filter(Boolean);
+
+    if (pracLines.length) {
+      lines.push('');
+      lines.push('另外你记过这些实践：' + pracLines.join('、') + '。');
+      lines.push('');
+      lines.push('这些比勾选本身有分量。下次做测评时，我会拿它提醒你重新估一下' +
+        '对应的那几项能力。');
+    } else {
+      lines.push('');
+      lines.push('还没有实践记录。勾完任务之后，那一行会问你"做到什么程度了"，' +
+        '点一下我就记住了。');
+    }
+
+    return lines.join('\n');
+  }
+
+  /* 按提问的措辞挑一类来答。都不像就返回 null，交给知识库去处理 */
+  function dataAnswer(question, analysis, profile) {
+    var q = String(question || '');
+
+    if (/能上|够不够|差多少|有希望|够得着|能不能进|够格|还差什么/.test(q)) {
+      return { title: '离目标还差多少', text: gapAnswer(analysis), source: 'offline' };
+    }
+    if (/先补|先学|最该|从哪开始|怎么补|优先补|先做哪个|补什么/.test(q)) {
+      return { title: '先补什么', text: priorityAnswer(analysis), source: 'offline' };
+    }
+    /* 这里刻意不收「什么时候」——太泛了。
+       "什么时候投实习"「什么时候该准备考研」这类问的是**该做什么**，
+       知识库里答得更准；收进来的话全被换算成一句"还剩 N 个月"。 */
+    if (/还有多久|多少时间|来得及|时间够|剩多少时间|还剩多久|读大几|我大几/.test(q)) {
+      return { title: '你还有多少时间', text: timeAnswer(profile), source: 'offline' };
+    }
+    if (/进度|完成了多少|做了多少|到哪了|做了几项/.test(q)) {
+      return { title: '你的进度', text: progressAnswer(), source: 'offline' };
+    }
+    return null;
+  }
+
   /* 离线模式的完整回答流程 */
   function answerOffline(question, analysis, profile) {
     /* 先看能不能用当前页面的上下文回答 */
     var ctxAns = contextAnswer(question, analysis, profile);
     if (ctxAns) return ctxAns;
+
+    /* 再看是不是"拿你自己的数据就能算"的那几类问题。
+       放在知识库匹配之前：这些问题的答案在你自己的数据里，
+       让关键词匹配去猜只会答成一段通用建议。 */
+    var dataAns = dataAnswer(question, analysis, profile);
+    if (dataAns) return dataAns;
 
     var hit = findEntry(question);
     var title = hit ? hit.entry.title : '换个说法再试试';

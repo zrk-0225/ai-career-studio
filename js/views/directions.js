@@ -186,6 +186,7 @@ AICS.Views = AICS.Views || {};
       }
 
       UI.modal({
+        key: 'dir-detail',
         title: dir.name + ' · ' + dir.sub,
         html: detailHtml(dir, score, AICS.resolveTrack(state))
       });

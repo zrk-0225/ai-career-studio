@@ -46,11 +46,19 @@ AICS.Views = AICS.Views || {};
       '</button>';
     }).join('');
 
+    /* 这个维度有实践记录就提醒一句。
+       闭环的关键就在这一句：用户勾了任务、答了"动手做过"，
+       下次做测评时系统能告诉他"你确实做过这件事，可以重新估一下自己"。
+       少了它，前面那条记录就只是存着而已，两头还是断的。 */
+    var pr = isAbility ? AICS.practiceOf(q.dim) : null;
+
     return '<div class="q' + (isAbility ? ' q--ability' : '') + '" data-q="' + q.id + '">' +
       '<div class="q__text">' +
         '<span class="q__no">' + index + '</span>' +
         '<div><span class="q__title">' + UI.esc(title) + '</span>' +
-        (hint ? '<span class="q__hint">' + UI.esc(hint) + '</span>' : '') + '</div>' +
+        (hint ? '<span class="q__hint">' + UI.esc(hint) + '</span>' : '') +
+        (pr ? '<span class="q__practice">四年规划里记过：' + UI.esc(pr.text) +
+          '。这一题可以按实际情况重新估。</span>' : '') + '</div>' +
       '</div>' +
       '<div class="q__opts">' + opts + '</div>' +
     '</div>';
@@ -98,13 +106,14 @@ AICS.Views = AICS.Views || {};
     if (names.length === 1) {
       return '你属于 <strong style="color:' + UI.scoreColor(band.top) + '">' + UI.esc(band.name) +
              '</strong>，匹配方向是 <strong>' + UI.esc(names[0]) + '</strong>，' +
-             /* 用常量而不是写死 5：档位阈值改过一次，写死的那个没跟着变 */
-             '比第二档高出 ' + AICS.Calc.BAND_GAP + ' 分以上。<br>';
+             /* 用这一次实际用的档位宽度，而不是默认的 5——
+                作答一致性低的时候档位会被放宽，那时候写 5 就是错的 */
+             '比第二档高出 ' + analysis.bandGap + ' 分以上。<br>';
     }
     return '你属于 <strong style="color:' + UI.scoreColor(band.top) + '">' + UI.esc(band.name) +
            '</strong>，这一档有 <strong>' + names.length + ' 个方向</strong>：' +
            UI.esc(names.join('、')) + '。<br>' +
-           '<span class="muted">它们的匹配度没有实质差别（分差在 ' + AICS.Calc.BAND_GAP +
+           '<span class="muted">它们的匹配度没有实质差别（分差在 ' + analysis.bandGap +
            ' 分以内），所以不排名次。去「匹配诊断」看详细对比。</span><br>';
   }
 
@@ -216,13 +225,20 @@ AICS.Views = AICS.Views || {};
         box.querySelectorAll('.opt').forEach(function (o) { o.classList.remove('is-on'); });
         btn.classList.add('is-on');
 
+        /* 这一题之前已经答了多少。要在写入 store 之前取——
+           "是不是刚答完"要拿它来判断，不能读 assess.finished：
+           那是个缓存出来的派生值，导入的备份里可能写着 true
+           而答案并不全，此时用户补答完最后一题会被当成"早就答完了"，
+           成长曲线少一条记录，而且全程没有任何提示。 */
+        var before = AICS.Calc.answeredCount(AICS.Store.get().assess.answers);
+
         var answers = Object.assign({}, AICS.Store.get().assess.answers);
         answers[qid] = value;
 
         var total = AICS.Calc.totalQuestions();
         var answered = AICS.Calc.answeredCount(answers);
         var finished = answered === total;
-        var wasFinished = !!(AICS.Store.get().assess || {}).finished;
+        var wasFinished = before === total;
 
         AICS.Store.set('assess', {
           answers: answers,

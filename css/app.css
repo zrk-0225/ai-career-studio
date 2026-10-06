@@ -782,6 +782,43 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 }
 /* 结论条里的"下一步"按钮：档内方向多的时候给一个能直接点的动作 */
 .band-conclusion__next { margin-top: 10px; }
+
+/* ---------- 成对比较（"你更愿意做哪件"） ---------- */
+
+.duel { margin-bottom: 18px; border-color: var(--accent); }
+.duel__progress { font-size: 12px; color: var(--text-dim); font-weight: 600; white-space: nowrap; }
+.duel__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+.duel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  text-align: left;
+  transition: border-color .18s, background .18s;
+}
+.duel-card:hover { border-color: var(--accent); background: var(--accent-soft); }
+.duel-card__name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.duel-card__scene {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  flex: 1;                       /* 撑开，让两张卡片的 CTA 底对齐 */
+}
+/* CTA 平时淡着，悬停才亮。
+   两张卡片是对等的，不能让其中一张看着更像按钮——那等于在暗示答案，
+   而这个模块的全部意义就是让他自己选。 */
+.duel-card__cta { font-size: 12px; font-weight: 600; color: var(--text-dim); transition: color .18s; }
+.duel-card:hover .duel-card__cta { color: var(--accent); }
+.duel__foot { margin-top: 12px; text-align: center; }
+.duel__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 /* 名称占满「名称 + 查看详情」那一行的剩余宽度，可以折行 */
 .rank-row__name { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.35; }
 .rank-row__bar {
@@ -992,6 +1029,29 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   font-size: 10.5px;
   color: var(--text-dim);
 }
+/* 差距明细里那行实践记录。放在分数下面、用主色——
+   它是这一列里唯一一条"客观做过什么"的信息，
+   和上面那两个自己打的分不是一回事，所以颜色要分开。 */
+.gap-row__practice {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+/* 测评页能力题下面那句"你记过…"。
+   左边一道主色竖条，和题目问法区分开——它不是问题的一部分，
+   是系统在旁边递的一个提醒。 */
+.q__practice {
+  display: block;
+  margin-top: 8px;
+  padding: 7px 11px;
+  border-radius: 0 7px 7px 0;
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
 
 /* 算法拆解折叠区 */
 .algo {
@@ -1106,10 +1166,43 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   text-decoration: line-through;
   color: var(--text-dim);
 }
+/* body 撑满剩余宽度，把右边的「拆成待办」按钮顶到行尾。
+   原来没有这条——那时行里只有勾选框和正文，现在多了一个按钮。 */
+.road-task__body { flex: 1; min-width: 0; }
 .road-task__body strong { display: block; font-size: 13px; font-weight: 500; }
+
+/* 「拆成待办」。平时压得很淡、鼠标移上来才亮——
+   二十多条任务每行挂一个按钮，全亮着会把正文压掉。
+   但不用 display:none 藏起来：手机上根本没有 hover，
+   藏了就等于没有这个功能。 */
+.road-task__split {
+  flex: 0 0 auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* 高度要够 28px——手机上这是要手指点的目标，
+     按钮做得再"雅致"，点不中也白搭 */
+  padding: 6px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  opacity: .55;
+  transition: opacity .16s, border-color .16s, color .16s, background .16s;
+}
+.road-task:hover .road-task__split { opacity: 1; }
+.road-task__split:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.road-task__split .icon { width: 13px; height: 13px; }
 /* "重点"标：只打在 pri 为 high 的那几项上。
    判断标准是"有硬期限，或错过就补不回来"——GPA、刷题、暑期实习、
-   毕业去向、秋招/考研这些。26 项全打标等于没打标。 */
+   毕业去向、秋招/考研这些。全打标等于没打标。 */
 .road-task__pri {
   display: inline-block;
   margin-left: 6px;
@@ -1123,6 +1216,41 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   white-space: nowrap;
 }
 .road-task.is-done .road-task__pri { opacity: .4; }
+
+/* 任务来源标：方向专项 / 补齐短板。
+   通用任务没有这个标——规划里绝大多数任务都是通用的，
+   只有多出来的那几条才需要说明"它是照你的情况生成的"。 */
+.road-task__kind {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.road-task__kind--dir { color: var(--accent); background: var(--accent-soft); }
+.road-task__kind--gap { color: var(--danger); background: var(--danger-soft); }
+.road-task.is-done .road-task__kind { opacity: .4; }
+
+/* 左侧一道竖条，颜色和上面的标一致。
+   这样不用读文字，扫一眼就知道哪几条是专门给这个人的。 */
+.road-task--dir,
+.road-task--gap { position: relative; }
+.road-task--dir::before,
+.road-task--gap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+}
+.road-task--dir::before { background: var(--accent); }
+.road-task--gap::before { background: var(--danger); }
+
 .road-task__body em {
   display: block;
   font-style: normal;
@@ -1131,6 +1259,109 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   margin-top: 2px;
   line-height: 1.55;
 }
+
+/* 勾完任务后补的那一行"这项做到什么程度了"。
+   虚线上边框把它和任务说明分开——它是"追加的一个问题"，
+   不是任务描述的一部分。 */
+.practice-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+}
+.practice-ask__label { font-size: 11.5px; color: var(--text-dim); }
+.practice-ask__btn {
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  transition: border-color .16s, color .16s, background .16s;
+}
+.practice-ask__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+/* 回答之后那句回执。刻意保留原位置和虚线上边框——
+   它替换掉的是问题那一行，位置不动用户才知道"刚才那行有下文了"。 */
+.practice-ask--done {
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ok);
+}
+.practice-ask--done .icon { width: 13px; height: 13px; }
+
+/* ---------- 四年规划的个性化说明 ---------- */
+
+.plan-note { margin-bottom: 18px; }
+.plan-note__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.plan-note__head .icon { width: 16px; height: 16px; color: var(--accent); flex: 0 0 auto; }
+.plan-note__head strong { font-size: 13.5px; }
+.plan-note p {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+.plan-note__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.plan-note__tip { font-size: 11.5px; color: var(--text-dim); }
+
+/* ---------- 四年规划的视图切换 ---------- */
+
+.view-switch { display: flex; gap: 6px; }
+.view-switch .chip { padding: 7px 14px; }
+
+/* ---------- 四年时间轴 ---------- */
+
+/* canvas 默认是 inline 元素，不给宽度的话会按内容撑成 300×150，
+   在这个容器里既铺不满也会被拉伸。必须显式 block + 100%。 */
+.timeline-canvas { display: block; width: 100%; height: 88px; margin: 6px 0 18px; }
+
+/* 「你现在在这里」那一块。用主色描边——它是这一屏里最该被看到的结论 */
+.where {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+}
+.where__head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.where__head .icon { width: 16px; height: 16px; color: var(--accent); flex: 0 0 auto; }
+.where__head strong { font-size: 13.5px; }
+.where p { font-size: 13px; line-height: 1.7; color: var(--text-muted); }
+.where p strong { color: var(--text); }
+.where__stale {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.where .link-btn { margin-top: 10px; }
+
+.milestones { margin-top: 20px; }
+.milestones h4 { font-size: 13.5px; margin-bottom: 10px; }
+.ms-list { display: flex; flex-direction: column; gap: 2px; }
+.ms { padding: 10px 12px; border-radius: var(--radius-sm); }
+.ms.is-past { opacity: .45; }
+.ms__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ms__head strong { font-size: 13px; }
+.ms__head span { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+.ms p { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-top: 3px; }
 
 /* ---------- 任务看板 ---------- */
 
@@ -2472,6 +2703,9 @@ mark {
 
   /* 聊天区的 Markdown 表格也让它能横向滚，别把气泡撑破 */
   .msg__md .md-table { display: block; overflow-x: auto; white-space: nowrap; }
+
+  /* 成对比较的两张卡片并排会挤成两条窄缝，文字读不动，改成上下堆 */
+  .duel__grid { grid-template-columns: 1fr; }
 
   .report-summary { grid-template-columns: 1fr 1fr; }
   .growth-row { grid-template-columns: 60px 1fr 88px; gap: 8px; font-size: 11.5px; }

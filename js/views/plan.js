@@ -33,6 +33,10 @@ AICS.Views = AICS.Views || {};
   /* 筛选条件只存在内存里，不写进存档 */
   var filter = { term: 'all', pri: 'all' };
 
+  /* 四年规划的显示方式：列表 / 时间轴。
+     也只存内存——这是"怎么看"，不是数据，没必要占存档。 */
+  var roadView = 'list';
+
   function priorityOf(key) {
     return PRIORITIES.filter(function (p) { return p.key === key; })[0] || PRIORITIES[1];
   }
@@ -50,6 +54,14 @@ AICS.Views = AICS.Views || {};
 
   /* ---------- 四年路线 ---------- */
 
+  /* 为这个人额外生成的任务，打个来源标。
+     通用任务不打标——规划里绝大多数都是通用的，全打标等于没打标，
+     只有多出来的这几条才需要说明"它是照你的情况生成的"。 */
+  var KIND_MARK = {
+    dir: { name: '方向专项', cls: 'dir' },
+    gap: { name: '补齐短板', cls: 'gap' }
+  };
+
   function stageProgress(stage, roadmap) {
     var done = stage.tasks.filter(function (t) { return roadmap[t.id]; }).length;
     return {
@@ -59,21 +71,96 @@ AICS.Views = AICS.Views || {};
     };
   }
 
+  /* ---------- 勾完任务之后：问一句"做到什么程度了" ----------
+     这是把"诊断 → 处方 → 执行"接成闭环的那一步。原来勾完就没了，
+     测评里的自评分和四年规划的执行之间没有任何联系。
+
+     注意这里做的**不是又一次自评**——自评已经有一个 1~5 分的量表，
+     再加一个只会让整个体系更糊。这里要的是一个能核对的事实：
+     这件事你到底做到哪一步了。所以只有三档，而且措辞都是动词。 */
+
+  var PRACTICE_LEVELS = [
+    { key: 'seen',  name: '了解过' },
+    { key: 'done',  name: '动手做过' },
+    { key: 'teach', name: '能讲清楚' }
+  ];
+
+  function practiceAsk(task) {
+    return '<div class="practice-ask">' +
+      '<span class="practice-ask__label">这项做到什么程度了？</span>' +
+      PRACTICE_LEVELS.map(function (lv) {
+        return '<button class="practice-ask__btn" data-action="practice"' +
+          ' data-id="' + task.id + '"' +
+          ' data-dim="' + task.dims[0] + '"' +
+          ' data-level="' + lv.key + '">' + lv.name + '</button>';
+      }).join('') +
+      '<button class="link-btn" data-action="practice-skip" data-id="' + task.id + '">先不记</button>' +
+    '</div>';
+  }
+
+  /* 回答之后把这一行换成一句回执，而不是直接删掉。
+
+     两个原因。一是删掉之后没有任何"记上了"的痕迹，用户只看到刚才那行
+     凭空消失；二是它整行都在 [data-action="toggle-road"] 里面，
+     删掉之后同一位置再点一下就会命中整行，把刚勾上的任务又取消掉、
+     连看板里的同名任务一起退回待办——"双击回答"等于"记了又取消"。 */
+  function practiceDoneHtml(levelKey) {
+    var lv = PRACTICE_LEVELS.filter(function (x) { return x.key === levelKey; })[0];
+    return '<div class="practice-ask practice-ask--done">' +
+      UI.icon('check') + '<span>已记下：' + UI.esc(lv ? lv.name : '') + '</span></div>';
+  }
+
+  /* 勾上之后、用户还没回答的那几条。留着它，重绘时接着问—— */
+  var pendingAsks = {};
+
+  /* 记一条实践记录，按能力维度累加。
+
+     只记到**第一个**关联维度上。有的任务确实同时练两样
+     （「系统学完机器学习经典算法并手推一遍」既练 ml 也练 math），
+     两边都记会让两个维度都虚高；而且用户看到"数学实践 3 次"
+     会先怀疑系统记错了。TASK_DIMS 里第一个就是主维度。 */
+  function recordPractice(dim, level) {
+    var all = Object.assign({}, AICS.Store.get().practice || {});
+    var rec = Object.assign({ seen: 0, done: 0, teach: 0 }, all[dim] || {});
+    rec[level] = (rec[level] || 0) + 1;
+    all[dim] = rec;
+    AICS.Store.replaceKey('practice', all);
+  }
+
   function stageCard(stage, roadmap) {
     var pr = stageProgress(stage, roadmap);
     var rows = stage.tasks.map(function (t) {
       var checked = !!roadmap[t.id];
+      var mark = KIND_MARK[t.kind];
+      /* 勾上了、问过、还没回答的那几条，重新渲染时要接着问。
+         原来这行只在点击那一刻插一次 DOM，切走再回来就没了——
+         用户再想记录也没有入口，只能先取消勾选再重新勾上。 */
+      var ask = (checked && pendingAsks[t.id] && t.dims && t.dims.length)
+        ? practiceAsk(t) : '';
       return '<li class="road-task' + (checked ? ' is-done' : '') +
+        (mark ? ' road-task--' + mark.cls : '') +
         '" data-action="toggle-road" data-id="' + t.id + '">' +
         '<span class="road-task__box">' + (checked ? UI.icon('check') : '') + '</span>' +
         '<span class="road-task__body">' +
           /* 只给"有硬期限或错过补不回来"的那几项打标。
-             26 项全打标等于没打标，只标重点反而一眼看得出该先做哪些。 */
-          '<strong>' + UI.esc(t.title) +
+             全打标等于没打标，只标重点反而一眼看得出该先做哪些。 */
+          /* 标题必须单独包一层。外面那些角标（「重点」「方向专项」）也是
+             节点，勾选时要靠 textContent 把标题读出来去和看板做匹配——
+             直接从 <strong> 整段读会把角标文字一起带上，变成
+             "高数…拿到良好以上重点"，那永远匹配不上。 */
+          '<strong><span class="road-task__title">' + UI.esc(t.title) + '</span>' +
+            (mark ? '<span class="road-task__kind road-task__kind--' + mark.cls + '">' +
+              mark.name + '</span>' : '') +
             (t.pri === 'high' ? '<span class="road-task__pri">重点</span>' : '') +
           '</strong>' +
           '<em>' + UI.esc(t.desc) + '</em>' +
+          ask +
         '</span>' +
+        /* 每条任务都挂一个「拆成待办」。
+           这是两个页面之间唯一的通道——规划装目标，看板装行动，
+           中间那一步（把目标拆成能动手的动作）必须由人来走。 */
+        '<button class="road-task__split" data-action="split-task" data-id="' + t.id +
+          '" title="拆成看板里的具体待办">' + UI.icon('plus') + '<span>拆成待办</span></button>' +
       '</li>';
     }).join('');
 
@@ -126,12 +213,174 @@ AICS.Views = AICS.Views || {};
         }).join('') +
       '</div>' +
       '<p class="track-note">' + UI.icon('info') +
-        '<span>路线只影响大三暑假和大四的几项任务。前两年的规划两条路是一样的，' +
-        '已经打过勾的进度也会保留。</span></p>' +
+        '<span>路线只影响大三暑假和大四的几项任务，前两年两条路一样。' +
+        '它和目标方向是两回事，方向决定的是标了「方向专项」的那几条。</span></p>' +
+    '</div>';
+  }
+
+  /* ---------- 时间轴视图 ----------
+     列表视图回答"要做什么"，时间轴回答"还剩多少时间"。
+     两个问题不一样，所以做成了两种看法而不是二选一。 */
+
+  /* 每个学年的完成度，喂给 Charts.timeline */
+  function timelineData(stages, roadmap) {
+    return stages.map(function (s) {
+      var pr = stageProgress(s, roadmap);
+      return { year: s.year, color: s.color, done: pr.done, total: pr.total, percent: pr.percent };
+    });
+  }
+
+  /* "你现在在这里"。整块是时间轴视图的重点——
+     图只说明走到哪儿了，这句话说明还剩多少时间。 */
+  function whereBlock(state, pos, now) {
+    if (!pos) {
+      return '<div class="banner banner--warn">' + UI.icon('alert') +
+        '<div><strong>还没填年级，标不出你现在的位置</strong>' +
+        '<span>时间轴得知道你在第几学年，才能算出离关键节点还有多久</span></div>' +
+        '<button class="link-btn" data-action="show-onboarding">现在去填 ' + UI.icon('arrow-right') + '</button>' +
+      '</div>';
+    }
+
+    /* 下一个还没到的节点 */
+    var next = null;
+    AICS.MILESTONES.forEach(function (ms) {
+      if (!next && AICS.monthsUntil(ms.abs, pos) >= 0) next = ms;
+    });
+
+    var line = '按 9 月开学推算，你现在是 <strong>' + UI.esc(pos.label) + '</strong>';
+    if (next) {
+      var left = AICS.monthsUntil(next.abs, pos);
+      line += '；距离「<strong>' + UI.esc(next.name) + '</strong>」还有 <strong>' +
+        left + ' 个月</strong>（' + AICS.monthLabel(now, left) + '）';
+    } else {
+      line += '。四年里的几个关键节点都已经过去了';
+    }
+
+    /* 年级会过期。只在离填表超过一年时提一句——
+       填了半年就提醒属于唠叨，提醒多了用户就再也不看了。 */
+    var stale = '';
+    var filled = state.profile.onboardedAt ? new Date(state.profile.onboardedAt) : null;
+    if (filled && !isNaN(filled.getTime())) {
+      var months = (now.getFullYear() - filled.getFullYear()) * 12 +
+                   (now.getMonth() - filled.getMonth());
+      if (months >= 12) {
+        stale = '<p class="where__stale">你填年级是 ' + months + ' 个月前的事了。' +
+          '如果已经升了一级，记得改一下，否则这里的位置和倒计时都会偏。</p>';
+      }
+    }
+
+    return '<div class="where">' +
+      '<div class="where__head">' + UI.icon('target') + '<strong>你现在在这里</strong></div>' +
+      '<p>' + line + '</p>' +
+      stale +
+      '<button class="link-btn" data-action="open-settings">年级填错了？改一下 ' +
+        UI.icon('arrow-right') + '</button>' +
+    '</div>';
+  }
+
+  /* 关键节点的倒计时清单。轴上只画小三角不写字，
+     名字和倒计时都放这儿——DOM 里能换行，读屏也能念出来。 */
+  function milestoneList(pos, now) {
+    if (!pos) return '';
+    var rows = AICS.MILESTONES.map(function (ms) {
+      var left = AICS.monthsUntil(ms.abs, pos);
+      var when;
+      if (left < 0) when = '已经过去 ' + (-left) + ' 个月';
+      else if (left === 0) when = '就是现在';
+      else when = '还有 ' + left + ' 个月 · ' + AICS.monthLabel(now, left);
+
+      return '<li class="ms' + (left < 0 ? ' is-past' : '') + '">' +
+        '<div class="ms__head">' +
+          '<strong>' + UI.esc(ms.name) + '</strong>' +
+          '<span>' + UI.esc(when) + '</span>' +
+        '</div>' +
+        '<p>' + UI.esc(ms.hint) + '</p>' +
+      '</li>';
+    }).join('');
+
+    return '<div class="milestones">' +
+      '<h4>接下来要面对的节点</h4>' +
+      '<ul class="ms-list">' + rows + '</ul>' +
+    '</div>';
+  }
+
+  function timelineView(stages, roadmap, state) {
+    var pos = AICS.termPosition(state.profile.year);
+    var now = new Date();
+
+    return '<div class="panel roadmap-timeline">' +
+      '<div class="panel__head">' +
+        '<div><h3>四年时间轴</h3>' +
+        '<p class="muted">每个色带是一个学年，水位就是这一阶段做完的比例</p></div>' +
+      '</div>' +
+      /* canvas 的尺寸交给 CSS，mount 时才画——render 阶段元素还没进文档，
+         拿不到宽度 */
+      '<canvas id="road-timeline" class="timeline-canvas"></canvas>' +
+      whereBlock(state, pos, now) +
+      milestoneList(pos, now) +
+    '</div>';
+  }
+
+  /* 说明卡：这份规划是照什么生成的。
+     不写的话，用户看到多出来几条任务只会以为是系统随手加的，
+     看不出它们跟自己的目标方向、能力短板有什么关系——
+     那这两层个性化就白做了。 */
+  function planNote(ctx, stages) {
+    var n = { dir: 0, gap: 0 };
+    stages.forEach(function (s) {
+      s.tasks.forEach(function (t) {
+        if (n[t.kind] !== undefined) n[t.kind]++;
+      });
+    });
+    var total = n.dir + n.gap;
+
+    /* 一项个性化任务都没有：不存在"没什么可说"的情况，
+       这时候该做的是告诉他怎么才能有。
+
+       两种情况要分开说，给的入口也不一样：
+         · 还没做测评   → 先去测评
+         · 做了但没缺口 → 再说一次"去做测评"就是错的，他刚做完；
+                          该引导的是去设一个目标方向 */
+    if (!total) {
+      var why = ctx.ready
+        ? '按你的测评结果，暂时没有明显要补的短板。定一个目标方向，这里会多出那个方向要做的事。'
+        : '现在这份规划，哪个 AI 专业的学生看的都是它。做完测评会补上你缺的那几项；' +
+          '定了目标方向，还会多出那个方向要做的事。';
+
+      return '<div class="panel plan-note">' +
+        '<div class="plan-note__head">' + UI.icon('target') +
+          '<strong>这份规划还能更贴你一些</strong></div>' +
+        '<p>' + UI.esc(why) + '</p>' +
+        '<div class="plan-note__foot">' +
+          (ctx.ready
+            ? '<button class="link-btn" data-action="go-match">去定目标方向 ' + UI.icon('arrow-right') + '</button>'
+            : '<button class="link-btn" data-action="go-assess">去做测评 ' + UI.icon('arrow-right') + '</button>' +
+              '<button class="link-btn" data-action="go-match">去定目标方向 ' + UI.icon('arrow-right') + '</button>') +
+        '</div>' +
+      '</div>';
+    }
+
+    var parts = [];
+    if (n.dir) parts.push('方向专项 ' + n.dir + ' 项');
+    if (n.gap) parts.push('补齐短板 ' + n.gap + ' 项');
+
+    return '<div class="panel plan-note">' +
+      '<div class="plan-note__head">' + UI.icon('target') +
+        '<strong>这份规划是怎么生成的</strong></div>' +
+      '<p>' + UI.esc(ctx.source) + '。带标签的 ' + total + ' 项（' + parts.join(' · ') +
+        '）是给你加的，其余哪个学生看都一样。</p>' +
+      '<div class="plan-note__foot">' +
+        '<button class="link-btn" data-action="go-match">' +
+          (ctx.target ? '换个目标方向' : '去定目标方向') + ' ' + UI.icon('arrow-right') + '</button>' +
+        '<span class="plan-note__tip">换了方向，专项任务会跟着换，已经打过的勾会保留</span>' +
+      '</div>' +
     '</div>';
   }
 
   AICS.Views.roadmap = {
+    /* 数据被整体换掉（导入备份 / 清空）时由 app.js 调用 */
+    resetState: function () { pendingAsks = {}; },
+
     title: '四年规划',
     desc: '大一到大四该做什么，一项项落实',
 
@@ -139,13 +388,21 @@ AICS.Views = AICS.Views || {};
       var state = AICS.Store.get();
       var roadmap = state.roadmap || {};
       var track = AICS.resolveTrack(state);
-      var stages = AICS.roadmapFor(track.key);
+      var ctx = AICS.planContext(state);
+      var stages = AICS.planFor(state);
       var t = roadmapTotals(stages, roadmap);
 
       var head = UI.pageHeader('四年行动路线',
         '把大目标拆成每年能做的事，做完就打勾',
-        '<button class="btn btn--primary" data-action="import-roadmap">' +
-          UI.icon('download') + ' 未完成任务导入看板</button>');
+        /* 这里原来有个「未完成任务导入看板」的主按钮。
+           v2 第二轮去掉了——它一键把 26 项原样复制进看板，
+           结果看板变成了规划页的副本。改成每条任务自己带「拆成待办」。 */
+        '<div class="view-switch">' +
+          '<button class="chip' + (roadView === 'list' ? ' is-on' : '') +
+            '" data-action="road-view" data-v="list">列表</button>' +
+          '<button class="chip' + (roadView === 'timeline' ? ' is-on' : '') +
+            '" data-action="road-view" data-v="timeline">时间轴</button>' +
+        '</div>');
 
       var summary = '<div class="banner">' +
         '<div class="ring-wrap"><canvas id="road-donut" style="width:76px;height:76px"></canvas></div>' +
@@ -154,25 +411,91 @@ AICS.Views = AICS.Views || {};
         '<button class="link-btn" data-action="go-kanban">去任务看板 ' + UI.icon('arrow-right') + '</button>' +
       '</div>';
 
-      return head + trackPicker(track) + summary +
-        '<div class="stages">' +
-          stages.map(function (s) { return stageCard(s, roadmap); }).join('') +
-        '</div>';
+      var body = roadView === 'timeline'
+        ? timelineView(stages, roadmap, state)
+        : '<div class="stages">' +
+            stages.map(function (s) { return stageCard(s, roadmap); }).join('') +
+          '</div>';
+
+      return head + trackPicker(track) + planNote(ctx, stages) + summary + body;
     },
 
     mount: function (root) {
       var state = AICS.Store.get();
       var roadmap = state.roadmap || {};
       var track = AICS.resolveTrack(state);
-      var stages = AICS.roadmapFor(track.key);
+      var stages = AICS.planFor(state);
 
       var t0 = roadmapTotals(stages, roadmap);
       var donut = root.querySelector('#road-donut');
       if (donut) AICS.Charts.donut(donut, t0.percent, { size: 8, color: UI.tone('accent2') });
 
+      /* 时间轴视图：在这里画图。放到 mount 而不是 render，
+         是因为 render 阶段 canvas 还没进文档，量不到宽度。 */
+      var tl = root.querySelector('#road-timeline');
+      if (tl) {
+        var pos = AICS.termPosition(state.profile.year);
+        AICS.Charts.timeline(tl, {
+          stages: timelineData(stages, roadmap),
+          position: pos ? pos.progress : null,
+          milestones: AICS.MILESTONES
+        });
+      }
+
       root.addEventListener('click', function (e) {
+        /* 列表 / 时间轴切换 */
+        var sw = e.target.closest('[data-action="road-view"]');
+        if (sw) {
+          roadView = sw.getAttribute('data-v');
+          AICS.App.refresh();
+          return;
+        }
+
+        /* "这项做到什么程度了"的回答。
+           必须放在 toggle-road 之前——这些按钮就在 .road-task 里面，
+           不拦住的话点一下会同时触发整行的勾选/取消，
+           结果是"记了一条记录，同时把任务取消了"。 */
+        var pv = e.target.closest('[data-action="practice"]');
+        if (pv) {
+          var pvId = pv.getAttribute('data-id');
+          recordPractice(pv.getAttribute('data-dim'), pv.getAttribute('data-level'));
+          delete pendingAsks[pvId];
+          var ask = pv.closest('.practice-ask');
+          if (ask) ask.outerHTML = practiceDoneHtml(pv.getAttribute('data-level'));
+          UI.toast('记下了。下次做测评时，这个维度可以按实际情况重新估', 'success');
+          return;
+        }
+        var ps = e.target.closest('[data-action="practice-skip"]');
+        if (ps) {
+          delete pendingAsks[ps.getAttribute('data-id')];
+          var ask2 = ps.closest('.practice-ask');
+          if (ask2) ask2.parentNode.removeChild(ask2);
+          return;
+        }
+
+        /* 「拆成待办」。同样得放在 toggle 之前——按钮在 .road-task 里面，
+           不拦住的话点一下会连带把这条规划任务勾上 */
+        var sp = e.target.closest('[data-action="split-task"]');
+        if (sp) {
+          var sid = sp.getAttribute('data-id');
+          var found = null, foundYear = '';
+          stages.forEach(function (s) {
+            s.tasks.forEach(function (x) {
+              if (x.id === sid) { found = x; foundYear = s.year; }
+            });
+          });
+          if (found) splitTask(found, foundYear);
+          return;
+        }
+
         var row = e.target.closest('[data-action="toggle-road"]');
         if (!row) return;
+
+        /* 「做到什么程度了」那一行整个嵌在可勾选的行里，凡是落在它里面的
+           点击都不该被当成勾选。上面两个分支只认按钮本身，
+           而回答之后这一行会变成一句回执（按钮没了），
+           没有这道兜底，双击的第二次就会把任务取消掉。 */
+        if (e.target.closest('.practice-ask')) return;
 
         var id = row.getAttribute('data-id');
         var map = Object.assign({}, AICS.Store.get().roadmap);
@@ -186,6 +509,27 @@ AICS.Views = AICS.Views || {};
         /* 局部更新这一行 */
         row.classList.toggle('is-done', nowDone);
         row.querySelector('.road-task__box').innerHTML = nowDone ? UI.icon('check') : '';
+
+        /* 勾上之后，如果这项关联了能力维度，就地补一行"做到什么程度了"。
+           不整页重绘——用户刚点的那一行会跳到视野外，体验很差。
+           取消勾选时把这一行撤掉，免得同一项挂着两个提问。 */
+        var body = row.querySelector('.road-task__body');
+        if (body) {
+          var oldAsk = body.querySelector('.practice-ask');
+          if (oldAsk) oldAsk.parentNode.removeChild(oldAsk);
+          delete pendingAsks[id];
+
+          if (nowDone) {
+            var taskObj = null;
+            stages.forEach(function (s) {
+              s.tasks.forEach(function (x) { if (x.id === id) taskObj = x; });
+            });
+            if (taskObj && taskObj.dims && taskObj.dims.length) {
+              pendingAsks[id] = true;
+              body.insertAdjacentHTML('beforeend', practiceAsk(taskObj));
+            }
+          }
+        }
 
         /* 更新所属阶段的计数和进度条 */
         var stageEl = row.closest('.stage');
@@ -212,8 +556,12 @@ AICS.Views = AICS.Views || {};
         var donut2 = root.querySelector('#road-donut');
         if (donut2) AICS.Charts.donut(donut2, t.percent, { size: 8, color: UI.tone('accent2') });
 
-        /* 联动：把看板里同名任务的状态也改掉 */
-        var title = row.querySelector('.road-task__body strong').textContent;
+        /* 联动：把看板里同名任务的状态也改掉。
+           取的是 .road-task__title，不是整个 <strong>——后者还包着
+           「重点」「方向专项」这些角标，连起来读会多出几个字，
+           和看板里的标题对不上，联动会静默失效（实测过）。 */
+        var titleEl = row.querySelector('.road-task__title');
+        var title = titleEl ? titleEl.textContent : '';
         var synced = AICS.syncTaskFromRoadmap(title, nowDone);
         if (synced) UI.toast(nowDone ? '已完成，看板里的同名任务同步更新了' : '已取消，看板里的同名任务同步更新了');
       });
@@ -221,6 +569,13 @@ AICS.Views = AICS.Views || {};
   };
 
   /* ---------- 任务看板 ---------- */
+
+  /* 看板上这几个按钮一按就重排整块列表：删掉一条，下面的卡片整体上移，
+     鼠标没动就落在了下一张卡片的同一个按钮上。双击等于删两条，
+     而第二下用户根本没看清删的是谁——撤销也只放回最后删的那一条。
+     列内排序和列间移动同理（双击连移两格）。
+     重排之后这一小段时间里不响应同类操作。 */
+  var boardLockUntil = 0;
 
   /* 按筛选条件挑出要显示的任务 */
   function visibleTasks(tasks) {
@@ -327,6 +682,10 @@ AICS.Views = AICS.Views || {};
   }
 
   AICS.Views.kanban = {
+    /* 筛选条件不写进存档，所以导入备份 / 清空数据时不会跟着变。
+       重置之后才看得到刚进来的那批任务。 */
+    resetState: function () { filter = { term: 'all', pri: 'all' }; },
+
     title: '任务看板',
     desc: '把规划拆成今天就能动手的小任务',
 
@@ -334,8 +693,10 @@ AICS.Views = AICS.Views || {};
       var tasks = AICS.Store.get().tasks || [];
 
       var head = UI.pageHeader('学习任务看板',
-        '可以拖动卡片换列，也可以用卡片上的箭头操作',
-        '<button class="btn" data-action="import-roadmap">' + UI.icon('download') + ' 导入未完成的规划任务</button>');
+        /* 副标题点明它和四年规划的关系。原来写的是"可以拖动卡片换列"——
+           那句话在讲操作方式，没回答"我为什么要用这一页"。 */
+        '最近真要动手的事，比四年规划细一层',
+        '<button class="btn" data-action="go-roadmap">' + UI.icon('calendar') + ' 从四年规划拆任务</button>');
 
       /* 新增任务表单 */
       var form = '<div class="panel add-task">' +
@@ -365,9 +726,11 @@ AICS.Views = AICS.Views || {};
         ? UI.empty({
             icon: 'kanban',
             title: '看板还是空的',
-            desc: '可以手动添加任务，也可以一键把「四年规划」里还没完成的任务导进来。',
-            action: 'import-roadmap',
-            actionText: '导入未完成的规划任务'
+            desc: '这里装的是最近真要动手的事。规划里写「系统学完机器学习经典算法」，' +
+              '放到这儿应该是「看完吴恩达第 3 周视频」。可以在上面直接加，' +
+              '也可以去四年规划把某条拆过来。',
+            action: 'go-roadmap',
+            actionText: '去四年规划拆任务'
           })
         : '';
 
@@ -404,9 +767,18 @@ AICS.Views = AICS.Views || {};
           return;
         }
 
+        /* 下面这几个动作都会立刻重排列表，重排后短暂不响应，
+           免得双击的第二下打到另一张卡片上。判断放在最前面，
+           一个入口挡住三个动作。 */
+        var reordering = e.target.closest('[data-action="task-move"], [data-action="task-order"], [data-action="task-del"]');
+        if (reordering) {
+          if (Date.now() < boardLockUntil) return;
+        }
+
         /* 列间移动 */
         var moveBtn = e.target.closest('[data-action="task-move"]');
         if (moveBtn) {
+          boardLockUntil = Date.now() + 400;
           var mid = moveBtn.getAttribute('data-id');
           var mdir = Number(moveBtn.getAttribute('data-dir'));
           updateTask(mid, function (t) {
@@ -420,6 +792,7 @@ AICS.Views = AICS.Views || {};
         /* 列内排序 */
         var orderBtn = e.target.closest('[data-action="task-order"]');
         if (orderBtn) {
+          boardLockUntil = Date.now() + 400;
           swapOrder(orderBtn.getAttribute('data-id'), Number(orderBtn.getAttribute('data-dir')));
           redrawBoard(root);
           return;
@@ -435,6 +808,7 @@ AICS.Views = AICS.Views || {};
         /* 删除（带撤销） */
         var delBtn = e.target.closest('[data-action="task-del"]');
         if (delBtn) {
+          boardLockUntil = Date.now() + 600;   // 删除给的余量长一点
           var did = delBtn.getAttribute('data-id');
           var all = AICS.Store.get().tasks || [];
           var removed = all.filter(function (t) { return t.id === did; })[0];
@@ -487,6 +861,7 @@ AICS.Views = AICS.Views || {};
         e.preventDefault();
         zone.classList.remove('is-over');
 
+        boardLockUntil = Date.now() + 400;   // 落下来之后卡片也换了位置
         var target = zone.getAttribute('data-drop');
         updateTask(draggingId, function () { return { status: target }; });
         redrawBoard(root);
@@ -494,6 +869,95 @@ AICS.Views = AICS.Views || {};
       });
     }
   };
+
+  /* ---------- 把规划任务拆成看板待办 ----------
+
+     这里原来是「未完成任务导入看板」——一键把 26 项原样复制进看板。
+     结果是两个页面上是同一批标题、同样的数量，用户直接问
+     "这两个功能是不是重复了"。
+
+     问题出在颗粒度：规划装的是**目标**（一学期一条），看板装的是
+     **行动**（一周几条）。原样复制等于把目标当成了行动。
+
+     改成逐条拆解，中间那一步不省——「系统学完机器学习经典算法」
+     和「看完吴恩达第 3 周视频」之间差的就是人的判断，
+     而这个判断只有用户自己能做。 */
+
+  function splitTask(task, stageYear) {
+    UI.modal({
+      key: 'split-task',
+      title: '拆成待办',
+      html: '<div class="form-grid">' +
+          '<label class="form-grid__full">具体要做什么' +
+            '<input type="text" id="split-title" class="input" maxlength="60" value="' +
+              UI.esc(task.title) + '">' +
+          '</label>' +
+          '<label>截止日期' +
+            UI.dateField('split-due', 'input', '', '可以先不填', '可直接输入') + '</label>' +
+        '</div>' +
+        '<p class="muted" style="margin-top:12px">' +
+          '上面预填的是规划里的原话。改成<strong>能直接动手</strong>的动作会更有用，' +
+          '一个学期级别的目标通常要拆成两三件。' +
+        '</p>',
+      actions: [
+        { text: '取消' },
+        {
+          text: '加到看板',
+          type: 'primary',
+          onClick: function (wrap) {
+            var title = (wrap.querySelector('#split-title').value || '').trim();
+            if (!title) { UI.toast('写点内容再加', 'error'); return false; }
+            /* 重复时不关弹窗——让用户直接改标题再存，比关掉重来省一步 */
+            if (!addToBoard(title, stageYear, task.pri, wrap.querySelector('#split-due').value || '')) {
+              UI.toast('看板里已经有「' + title + '」了，改一下再加', 'error');
+              return false;
+            }
+            UI.toast('已加到看板', 'success', {
+              text: '去看板',
+              onClick: function () { AICS.App.navigate('kanban'); }
+            });
+          }
+        }
+      ],
+      onMount: function (wrap) {
+        UI.syncDateFields(wrap);
+        var inp = wrap.querySelector('#split-title');
+        /* 光标落在输入框里、文字全选——预填的是原话，多半要改，
+           全选之后直接敲就是替换，不用先手动删一遍 */
+        if (inp) { inp.focus(); inp.select(); }
+      }
+    });
+  }
+
+  /* 看板里有没有同名的未完成任务。
+
+     加这条检查是因为实测踩到过：同一条规划任务点两次「拆成待办」、
+     标题都没改，看板上就出现两张一模一样的卡片——看着像坏了。
+     "点快了"和"忘了自己加过"都会造成这个结果。
+
+     **已完成**的同名任务不算重复：那可能是"这件事又要做一遍"，是合理的。 */
+  function boardHas(title) {
+    return (AICS.Store.get().tasks || []).some(function (t) {
+      return t.title === title && t.status !== 'done';
+    });
+  }
+
+  /* 往看板里加一条任务。字段和看板自己的「添加」保持一致，
+     阶段和优先级从规划任务继承过来。重复的话返回 false，由调用方提示。 */
+  function addToBoard(title, term, priority, due) {
+    if (boardHas(title)) return false;
+    var tasks = (AICS.Store.get().tasks || []).slice();
+    tasks.push({
+      id: AICS.Store.uid('task'),
+      title: title,
+      status: 'todo',
+      term: term,
+      priority: priority || 'mid',
+      due: due || ''
+    });
+    AICS.Store.set('tasks', tasks);
+    return true;
+  }
 
   /* ---------- 任务操作 ---------- */
 
@@ -544,6 +1008,8 @@ AICS.Views = AICS.Views || {};
     if (!input) return;
     var title = (input.value || '').trim();
     if (!title) { UI.toast('先写点内容再添加', 'error'); input.focus(); return; }
+    /* 和「拆成待办」用同一条规则，免得两处行为不一致 */
+    if (boardHas(title)) { UI.toast('看板里已经有「' + title + '」了', 'error'); input.focus(); return; }
 
     var tasks = (AICS.Store.get().tasks || []).slice();
     tasks.push({
@@ -592,6 +1058,7 @@ AICS.Views = AICS.Views || {};
     '</div>';
 
     UI.modal({
+      key: 'edit-task',
       title: '编辑任务',
       html: html,
       actions: [
@@ -636,44 +1103,6 @@ AICS.Views = AICS.Views || {};
 
   /* ---------- 与四年规划联动 ---------- */
 
-  /* 把四年规划里未完成的任务导入看板。
-     只导当前路线的任务——走升学路线的人不需要把"秋招冲刺"加到看板里。
-     已经导入过的不重复加；已勾选完成的不导入（按钮上写的就是"未完成"）。 */
-  AICS.importRoadmapToKanban = function () {
-    var state = AICS.Store.get();
-    var existing = state.tasks || [];
-    var roadmap = state.roadmap || {};
-    var track = AICS.resolveTrack(state);
-    var stages = AICS.roadmapFor(track.key);
-    var titles = {};
-    existing.forEach(function (t) { titles[t.title] = true; });
-
-    var added = 0;
-    var next = existing.slice();
-    stages.forEach(function (stage) {
-      stage.tasks.forEach(function (t) {
-        if (titles[t.title]) return;         // 已经在看板里了
-        if (roadmap[t.id]) return;           // 四年规划里已经打勾了，不用导
-        titles[t.title] = true;
-        next.push({
-          id: AICS.Store.uid('task'),
-          title: t.title,
-          status: 'todo',
-          term: stage.year,
-          /* 用四年规划里给这项定的优先级，别再写死 mid——
-             写死的结果是导进来一堆"中"，筛选条按优先级筛等于没筛。
-             数据里没写的按 mid 兜底。 */
-          priority: t.pri || 'mid',
-          due: ''
-        });
-        added++;
-      });
-    });
-
-    AICS.Store.set('tasks', next);
-    return { added: added, track: track.name };
-  };
-
   /* ---------- 四年规划 ↔ 任务看板：双向联动 ----------
      两个方向各管各的，别指望一个函数同时干两件事。 */
 
@@ -682,8 +1111,7 @@ AICS.Views = AICS.Views || {};
      （比如「整理一个能讲 20 分钟的核心项目」在就业和"还没想好"里都有）。 */
   AICS.syncRoadmapFromTask = function (title, status) {
     var state = AICS.Store.get();
-    var track = AICS.resolveTrack(state);
-    var stages = AICS.roadmapFor(track.key);
+    var stages = AICS.planFor(state);
 
     var match = null;
     stages.forEach(function (stage) {

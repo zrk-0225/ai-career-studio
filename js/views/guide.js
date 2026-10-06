@@ -26,7 +26,7 @@ AICS.Views = AICS.Views || {};
     { route: 'match',     icon: 'chart',   name: '匹配诊断',  desc: '核心页面。算出你和每个方向的匹配度，并告诉你差在哪、怎么补' },
     { route: 'compare',   icon: 'scale',   name: '方向对比',  desc: '在两个方向之间犹豫时用，把它们的岗位要求叠在一起看' },
     { route: 'growth',    icon: 'trend',   name: '成长曲线',  desc: '每隔一段时间重测一次，这里会画出你的能力变化轨迹' },
-    { route: 'roadmap',   icon: 'calendar',name: '四年规划',  desc: '大一到大四共 ' + AICS.roadmapTotal() + ' 项阶段任务，会按你的毕业去向分岔' },
+    { route: 'roadmap',   icon: 'calendar',name: '四年规划',  desc: '大一到大四 ' + AICS.roadmapTotal() + ' 项通用阶段任务，还会按你的目标方向和能力短板再加几项' },
     { route: 'kanban',    icon: 'kanban',  name: '任务看板',  desc: '把规划拆成能落地的具体任务，支持截止日期、优先级、筛选' },
     { route: 'assistant', icon: 'bot',     name: 'AI 助手',   desc: '问职业规划相关的问题。默认离线知识库，可配置接入真实大模型' },
     { route: 'resources', icon: 'book',    name: '资源库',    desc: '课程、竞赛、数据集、论文、社区共 ' + AICS.resourceCount() + ' 条精选资源，可搜索' },
@@ -41,7 +41,7 @@ AICS.Views = AICS.Views || {};
       reason: '你还没上专业课，能力这块基本是空的——所以算法会主要看你的兴趣和性格。' +
               '现在不用急着定方向，先把地图看全。',
       focus: ['assess', 'directions', 'roadmap'],
-      tip: '「四年规划」里大一那部分现在就能开始，尤其是数学和 Python 这两件事。'
+      tip: '「四年规划」里大一那部分现在就能开始，尤其是数学和编程这两件事。'
     },
     '大二': {
       title: '这个阶段的核心是「试出感觉」',

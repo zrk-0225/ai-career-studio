@@ -64,9 +64,26 @@ window.AICS = window.AICS || {};
     setTimeout(dismiss, action ? 6000 : (type === 'error' ? 4200 : 2600));
   }
 
-  /* 通用弹窗。actions = [{ text, type, onClick }] */
+  /* 已经开着的弹窗，按 key 记。
+     遮罩要淡入，双击的第一下和第二下之间它还没生效，第二次点击是能
+     穿过去的——两个弹窗叠在同一个位置上，用户看不出来，但每多一个
+     就多一份表单和一套事件绑定。
+
+     为什么不能直接查 DOM 里有没有同款节点：关闭有 200ms 的淡出，
+     这段时间里节点还挂着，紧接着重开会直接被挡掉，表现成"点了没反应"。
+     所以在关闭的那一刻就销号，而不是等节点真的被移除。 */
+  var openKeys = {};
+
+  /* 通用弹窗。actions = [{ text, type, onClick }]，key 可选，用来防重复打开 */
   function modal(options) {
     var root = document.getElementById('modal-root');
+    var key = options.key;
+
+    if (key) {
+      if (openKeys[key]) return null;
+      openKeys[key] = true;
+    }
+
     var wrap = document.createElement('div');
     wrap.className = 'modal-mask';
 
@@ -87,6 +104,7 @@ window.AICS = window.AICS || {};
       '</div>';
 
     function close() {
+      if (key) delete openKeys[key];   // 立刻销号，不等淡出结束
       wrap.classList.remove('is-in');
       setTimeout(function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 200);
     }
@@ -115,6 +133,7 @@ window.AICS = window.AICS || {};
   /* 确认对话框，比原生 confirm 好看且风格统一 */
   function confirm(message, onYes, yesText) {
     modal({
+      key: 'confirm',
       title: '确认操作',
       html: '<p class="modal__text">' + esc(message) + '</p>',
       actions: [

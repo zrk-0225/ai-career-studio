@@ -78,9 +78,19 @@ AICS.Views = AICS.Views || {};
 
   /* ---------- 发送消息 ---------- */
 
+  /* 上一次发出去的问题和时间，用来挡连点。
+     快捷提问那几个按钮在 #chat-list 外面，发完消息只重绘列表，
+     按钮本身既不会被移除也不会被禁用，所以点两下就是两条一模一样的
+     提问、两次请求（在线模式下是真的花两次钱）。
+     只挡"同一句话 + 一秒内"，不是全局节流——连着问两个不同的问题照常。 */
+  var lastSend = { text: '', at: 0 };
+
   function send(root, text) {
     text = (text || '').trim();
     if (!text) return;
+
+    if (text === lastSend.text && Date.now() - lastSend.at < 1000) return;
+    lastSend = { text: text, at: Date.now() };
 
     var list = root.querySelector('#chat-list');
     if (!list) return;
@@ -98,8 +108,12 @@ AICS.Views = AICS.Views || {};
     list.appendChild(thinking);
     scrollBottom();
 
+    /* 回答先落库，再判断要不要画到界面上。
+       原来是"看列表还在不在，不在就直接 return"——可用户那句话早在
+       发出去的那一刻就写进记录了，回答却被丢掉，他回到助手页只看到
+       "有提问、没有回答"，而且那条提问永远等不到答案。
+       切页只该影响"画不画"，不该影响"存不存"。 */
     AICS.Assistant.ask(text).then(function (res) {
-      if (!document.body.contains(list)) return;   // 用户已经切走了
       AICS.Store.pushChat({
         role: 'ai',
         title: res.title,
@@ -108,16 +122,17 @@ AICS.Views = AICS.Views || {};
         notice: res.notice || '',
         time: new Date().toISOString()
       });
+      if (!document.body.contains(list)) return;   // 用户已经切走了，下次进来再看
       list.innerHTML = renderMessages(AICS.Store.get());
       scrollBottom();
     }).catch(function (err) {
-      if (!document.body.contains(list)) return;
       AICS.Store.pushChat({
         role: 'ai',
         title: '出错了',
         text: '抱歉，回答生成失败：' + (err && err.message ? err.message : '未知错误'),
         source: 'offline'
       });
+      if (!document.body.contains(list)) return;
       list.innerHTML = renderMessages(AICS.Store.get());
       scrollBottom();
     });

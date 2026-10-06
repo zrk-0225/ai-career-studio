@@ -218,7 +218,7 @@ window.AICS = window.AICS || {};
     {
       key: 'ability',
       title: '能力现状自评',
-      desc: '这部分会跟着你的年级变——不会问你还没学过的东西。每一档都有具体标准，按标准选，别凭感觉高估。',
+      desc: '这部分会跟着你的年级变，不会问你还没学过的东西。每一档都有具体标准，按标准选。',
       questions: AICS.QUESTIONS_ABILITY
     },
     {

@@ -16,6 +16,10 @@ AICS.Views = AICS.Views || {};
 
   var UI = AICS.UI;
 
+  /* 任务来源的标记，规划书的 Markdown 版和 HTML 版共用。
+     通用任务不加标记——全篇绝大多数都是通用的，加了反而看不清重点。 */
+  var KIND_LABEL = { dir: '方向专项', gap: '补齐短板' };
+
   function dateStr() {
     var d = new Date();
     function pad(n) { return n < 10 ? '0' + n : String(n); }
@@ -81,14 +85,14 @@ AICS.Views = AICS.Views || {};
 
     if (names.length === 1) {
       return '综合三项测评，' + (picked ? '你已把 ' : '匹配度最高的是 ') + b(names[0]) +
-             (picked ? ' 设为目标方向。' : '。它比第二档高出 ' + AICS.Calc.BAND_GAP +
+             (picked ? ' 设为目标方向。' : '。它比第二档高出 ' + analysis.bandGap +
                ' 分以上，区分度足够，可以认真考虑。') +
              '本规划书以它为主线展开后续分析。';
     }
 
     return '综合三项测评，你属于 ' + b(band.name) + '，这一档有 ' + b(names.length + ' 个方向') + '：' +
            names.map(e).join('、') + '。' +
-           '它们的匹配度没有实质差别——分差都在 ' + AICS.Calc.BAND_GAP +
+           '它们的匹配度没有实质差别——分差都在 ' + analysis.bandGap +
            ' 分以内，相当于一道自评题的出入，所以本规划书不给它们排名次。' +
            '本规划书以其中的 ' + b(target.name) + ' 作为主攻方向展开后续分析' +
            (picked ? '（你已手动确认）。' : '（这是系统推荐，你还没有手动确认，可在「匹配诊断」里更换）。');
@@ -190,8 +194,16 @@ AICS.Views = AICS.Views || {};
        分数也取整，不保留小数。 */
     L.push('## 五、就业方向匹配度分档');
     L.push('');
-    L.push('分差在 ' + AICS.Calc.BAND_GAP + ' 分以内的方向算作同一档，档内不分先后。');
+    L.push('分差在 ' + analysis.bandGap + ' 分以内的方向算作同一档，档内不分先后。');
     L.push('');
+    /* 档位被放宽过就写明原因。这份文档是交出去的，
+       "为什么这次分得比平时粗"必须有据可查，不能让人觉得是随手定的。 */
+    if (analysis.consistency && analysis.bandGap > AICS.Calc.BAND_GAP) {
+      L.push('> 注：本次作答的一致性为 ' + analysis.consistency.score + ' 分（' +
+        analysis.consistency.text + '），因此档位宽度由默认的 ' +
+        AICS.Calc.BAND_GAP + ' 分放宽到 ' + analysis.bandGap + ' 分。');
+      L.push('');
+    }
     L.push('| 档位 | 方向 | 匹配度 | 能力 | 兴趣 | 偏好 | 学历建议 | 评价 |');
     L.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
     analysis.bands.forEach(function (b) {
@@ -269,10 +281,11 @@ AICS.Views = AICS.Views || {};
     L.push('## 八、四年行动路线与完成情况');
     L.push('');
     var roadmap = state.roadmap || {};
-    var stages = AICS.roadmapFor(track.key);
+    var stages = AICS.planFor(state);
     L.push('**毕业去向：' + track.name + '**' + (track.auto && track.reason ? '（' + track.reason + '）' : ''));
     L.push('');
-    L.push('> 大三暑假和大四的部分任务会跟着毕业去向变。下面的路线是按「' + track.name + '」生成的。');
+    L.push('> 这份路线按你的毕业去向「' + track.name + '」和能力短板生成。' +
+      '标了〔方向专项〕〔补齐短板〕的是为你单独加的，其余是全专业通用的阶段任务。');
     L.push('');
     stages.forEach(function (stage) {
       var doneCount = stage.tasks.filter(function (t) { return roadmap[t.id]; }).length;
@@ -281,7 +294,8 @@ AICS.Views = AICS.Views || {};
       L.push('> ' + stage.goal);
       L.push('');
       stage.tasks.forEach(function (t) {
-        L.push('- [' + (roadmap[t.id] ? 'x' : ' ') + '] **' + t.title + '** —— ' + t.desc);
+        var mark = KIND_LABEL[t.kind] ? '**〔' + KIND_LABEL[t.kind] + '〕** ' : '';
+        L.push('- [' + (roadmap[t.id] ? 'x' : ' ') + '] ' + mark + '**' + t.title + '** —— ' + t.desc);
       });
       L.push('');
     });
@@ -393,7 +407,12 @@ AICS.Views = AICS.Views || {};
 
     /* 分档而不是排行，分数取整——理由同 Markdown 版 */
     H.push('<h2>五、就业方向匹配度分档</h2>');
-    H.push('<p>分差在 ' + AICS.Calc.BAND_GAP + ' 分以内的方向算作同一档，档内不分先后。</p>');
+    H.push('<p>分差在 ' + analysis.bandGap + ' 分以内的方向算作同一档，档内不分先后。</p>');
+    if (analysis.consistency && analysis.bandGap > AICS.Calc.BAND_GAP) {
+      H.push('<p class="goal">注：本次作答的一致性为 ' + analysis.consistency.score + ' 分（' +
+        esc(analysis.consistency.text) + '），因此档位宽度由默认的 ' +
+        AICS.Calc.BAND_GAP + ' 分放宽到 ' + analysis.bandGap + ' 分。</p>');
+    }
     H.push('<table><tr><th>档位</th><th>方向</th><th>匹配度</th><th>能力</th><th>兴趣</th><th>偏好</th><th>学历建议</th><th>评价</th></tr>' +
       analysis.bands.map(function (b) {
         return b.items.map(function (r, i) {
@@ -449,18 +468,20 @@ AICS.Views = AICS.Views || {};
     H.push('<p><b>需要留意的风险：</b>' + esc(target.dir.risk) + '</p>');
 
     var roadmap = state.roadmap || {};
-    var stages = AICS.roadmapFor(track.key);
+    var stages = AICS.planFor(state);
     H.push('<h2>八、四年行动路线与完成情况</h2>');
     H.push('<p><b>毕业去向：' + esc(track.name) + '</b>' +
       (track.auto && track.reason ? '（' + esc(track.reason) + '）' : '') + '</p>');
-    H.push('<p class="goal">大三暑假和大四的部分任务会跟着毕业去向变，下面的路线是按「' +
-      esc(track.name) + '」生成的。</p>');
+    H.push('<p class="goal">这份路线按你的毕业去向「' + esc(track.name) +
+      '」和能力短板生成，标了〔方向专项〕〔补齐短板〕的是为你单独加的。</p>');
     stages.forEach(function (stage) {
       var doneCount = stage.tasks.filter(function (t) { return roadmap[t.id]; }).length;
       H.push('<h3>' + esc(stage.year) + ' · ' + esc(stage.theme) + '（' + doneCount + '/' + stage.tasks.length + '）</h3>');
       H.push('<p class="goal">' + esc(stage.goal) + '</p>');
       H.push('<ul>' + stage.tasks.map(function (t) {
-        return '<li>' + (roadmap[t.id] ? '☑' : '☐') + ' <b>' + esc(t.title) + '</b> —— ' + esc(t.desc) + '</li>';
+        var mark = KIND_LABEL[t.kind] ? '<b>〔' + KIND_LABEL[t.kind] + '〕</b> ' : '';
+        return '<li>' + (roadmap[t.id] ? '☑' : '☐') + ' ' + mark +
+          '<b>' + esc(t.title) + '</b> —— ' + esc(t.desc) + '</li>';
       }).join('') + '</ul>');
     });
 
@@ -557,7 +578,7 @@ AICS.Views = AICS.Views || {};
 
     var roadmap = state.roadmap || {};
     var track = AICS.resolveTrack(state);
-    var stages = AICS.roadmapFor(track.key);
+    var stages = AICS.planFor(state);
     var totalTasks = 0, doneTasks = 0;
     stages.forEach(function (s) {
       s.tasks.forEach(function (t) { totalTasks++; if (roadmap[t.id]) doneTasks++; });
@@ -618,8 +639,12 @@ AICS.Views = AICS.Views || {};
        输出一份 Word 版否认掉的排名表。现在三条导出路径口径一致。 */
     html += '<section class="report-section">' +
       '<h2>三、就业方向匹配度分档</h2>' +
-      '<p class="report-lead">分差在 ' + AICS.Calc.BAND_GAP +
-        ' 分以内的方向算作同一档，档内不分先后。</p>' +
+      '<p class="report-lead">分差在 ' + analysis.bandGap +
+        ' 分以内的方向算作同一档，档内不分先后。' +
+        (analysis.consistency && analysis.bandGap > AICS.Calc.BAND_GAP
+          ? '本次作答的一致性为 ' + analysis.consistency.score + ' 分（' +
+            UI.esc(analysis.consistency.text) + '），档位已相应放宽。'
+          : '') + '</p>' +
       '<table class="report-table"><thead><tr>' +
         '<th>档位</th><th>方向</th><th>匹配度</th><th>能力</th><th>兴趣</th><th>偏好</th><th>学历建议</th><th>评价</th>' +
       '</tr></thead><tbody>' +
@@ -662,8 +687,9 @@ AICS.Views = AICS.Views || {};
     html += '<section class="report-section">' +
       '<h2>五、四年行动路线（' + UI.esc(track.name) + '）</h2>' +
       '<p class="report-note" style="margin-bottom:14px">' +
-        '大三暑假和大四的部分任务会跟着毕业去向变，下面是按「' + UI.esc(track.name) + '」生成的路线。' +
-        (track.auto && track.reason ? '（' + UI.esc(track.reason) + '）' : '') + '</p>' +
+        '这份路线按你的毕业去向「' + UI.esc(track.name) + '」和能力短板生成，' +
+        '标了〔方向专项〕〔补齐短板〕的是为你单独加的。' +
+        (track.auto && track.reason ? UI.esc(track.reason) + '。' : '') + '</p>' +
       stages.map(function (stage) {
         var done = stage.tasks.filter(function (t) { return roadmap[t.id]; }).length;
         return '<div class="report-stage">' +
@@ -672,7 +698,9 @@ AICS.Views = AICS.Views || {};
           '<p class="report-stage__goal">' + UI.esc(stage.goal) + '</p>' +
           '<ul>' + stage.tasks.map(function (t) {
             return '<li class="' + (roadmap[t.id] ? 'is-done' : '') + '">' +
-              (roadmap[t.id] ? '☑' : '☐') + ' ' + UI.esc(t.title) + '</li>';
+              (roadmap[t.id] ? '☑' : '☐') + ' ' +
+              (KIND_LABEL[t.kind] ? '〔' + KIND_LABEL[t.kind] + '〕' : '') +
+              UI.esc(t.title) + '</li>';
           }).join('') + '</ul>' +
         '</div>';
       }).join('') +
@@ -762,6 +790,7 @@ AICS.Views = AICS.Views || {};
       return;
     }
     UI.modal({
+      key: 'pdf-help',
       title: '导出成 PDF',
       html: '<p class="modal__text">点击下面的按钮会打开浏览器的打印窗口。' +
         '在打印窗口里把「目标打印机」或「打印机」那一栏改成 <strong>「另存为 PDF」</strong>，' +

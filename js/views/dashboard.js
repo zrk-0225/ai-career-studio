@@ -12,16 +12,21 @@ AICS.Views = AICS.Views || {};
 
   var UI = AICS.UI;
 
-  /* 统计四年路线的完成情况。只算当前路线的任务，
-     否则走升学路线的人会看到一堆"秋招冲刺"被算进总数里 */
+  /* 统计四年路线的完成情况。只算当前路线 + 当前个性化的任务，
+     否则走升学路线的人会看到一堆"秋招冲刺"被算进总数里；
+     用 planFor 而不是 roadmapFor，是为了跟四年规划页数出同一个总数——
+     两边不一致的话，概览说 30 项、规划页列 32 项，用户会以为哪边坏了 */
   function roadmapStats(state) {
     var track = AICS.resolveTrack(state);
-    var stages = AICS.roadmapFor(track.key);
+    var stages = AICS.planFor(state);
+    /* roadmap 恒为对象（defaultState 给的是 {}，写入也只走 replaceKey），
+       这里的 || {} 只是和全站其它几处读法保持一致 */
+    var roadmap = state.roadmap || {};
     var total = 0, done = 0;
     stages.forEach(function (stage) {
       stage.tasks.forEach(function (t) {
         total++;
-        if (state.roadmap[t.id]) done++;
+        if (roadmap[t.id]) done++;
       });
     });
     return {
@@ -107,7 +112,7 @@ AICS.Views = AICS.Views || {};
         '<button class="link-btn" data-action="go-match">查看完整诊断 ' + UI.icon('arrow-right') + '</button></div>' +
         (bandItems.length > 1
           ? '<p class="muted" style="margin-bottom:12px">这几个方向的匹配度没有实质差别（分差在 ' +
-            AICS.Calc.BAND_GAP + ' 分以内），所以不分先后。选哪个该看别的因素——' +
+            analysis.bandGap + ' 分以内），所以不分先后。选哪个得看别的：' +
             '愿不愿意读研、喜欢写代码还是跟人打交道。</p>'
           : '') +
         '<div class="top3">' +
@@ -148,7 +153,12 @@ AICS.Views = AICS.Views || {};
 
     var priorityHtml = analysis.priority.length
       ? '<div class="panel">' +
-          '<div class="panel__head"><h3>最该先补的三件事</h3>' + priorityHead + '</div>' +
+          /* 条数现算。原来写死的是「最该先补的三件事」，
+             但 priority 最多三条、可能一条都没有——只剩一条时
+             标题还写着"三件事"，跟下面列出来的对不上。
+             这是算法改过之后留下的：早先确实固定给三条。 */
+          '<div class="panel__head"><h3>最该先补的 ' + analysis.priority.length +
+            ' 件事</h3>' + priorityHead + '</div>' +
           '<div class="priority-list">' +
             analysis.priority.map(function (g) {
               return '<div class="priority">' +
