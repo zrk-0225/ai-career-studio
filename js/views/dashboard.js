@@ -68,9 +68,9 @@ AICS.Views = AICS.Views || {};
             : '这个仪表盘现在是空的') + '</h1>' +
           '<p>' + (partial
             ? '答完之后，这里会显示你和七个方向各有多契合、能力短板和四年进度。'
-            : '这里的每一项分析都建立在测评数据之上。花 12 分钟做完 ' +
+            : '花 12 分钟做完 ' +
               AICS.Calc.totalQuestions() + ' 道题，' +
-              '它就会变成你的个人仪表盘：匹配档位、离目标还差什么、四年该往哪使劲。') + '</p>' +
+              '它就会变成你的个人仪表盘：匹配档位、与目标方向的差距、四年各阶段的重点。') + '</p>' +
           '<div class="hero__actions">' +
             '<button class="btn btn--primary btn--lg" data-action="go-assess">' +
               UI.icon('target') + ' ' + (partial ? '继续做测评' : '开始自我认知测评') + '</button>' +
@@ -148,7 +148,7 @@ AICS.Views = AICS.Views || {};
     var priorityHead = pf.isTarget
       ? '<span class="muted">按你的目标方向「' + UI.esc(pf.name) + '」算的</span>'
       : '<span class="muted">按' + UI.esc(pf.bandName || '第一档') + '这 ' + (pf.bandCount || 0) +
-        ' 个方向<b>都要</b>的算的' +
+        ' 个方向<b>共同</b>的要求算的' +
         '<button class="link-btn" data-action="go-match">定个目标方向 ' + UI.icon('arrow-right') + '</button></span>';
 
     var priorityHtml = analysis.priority.length
@@ -157,8 +157,8 @@ AICS.Views = AICS.Views || {};
              但 priority 最多三条、可能一条都没有——只剩一条时
              标题还写着"三件事"，跟下面列出来的对不上。
              这是算法改过之后留下的：早先确实固定给三条。 */
-          '<div class="panel__head"><h3>最该先补的 ' + analysis.priority.length +
-            ' 件事</h3>' + priorityHead + '</div>' +
+          '<div class="panel__head"><h3>优先补齐的 ' + analysis.priority.length +
+            ' 项</h3>' + priorityHead + '</div>' +
           '<div class="priority-list">' +
             analysis.priority.map(function (g) {
               return '<div class="priority">' +
@@ -219,7 +219,10 @@ AICS.Views = AICS.Views || {};
                   UI.esc(t.due.slice(5)) + (late ? ' 已过期' : '') + '</em>' : '') +
                 (t.term ? UI.tag(t.term, 'ghost') : '') + '</li>';
             }).join('') + '</ul>'
-          : '<p class="muted">还没有待办任务。去「四年规划」把阶段任务一键导入看板吧。</p>') +
+          /* 这里原来写的是"去「四年规划」把阶段任务一键导入看板吧"——
+             "一键导入"这个功能 v2 已经删掉了（见 app.js 里那段说明），
+             这句话指向一个不存在的东西。改成现在的实际做法。 */
+          : '<p class="muted">还没有待办任务。可以在「四年规划」里把某条阶段任务「拆成待办」，加进来看板。</p>') +
       '</div>';
 
     /* 快捷提问 */

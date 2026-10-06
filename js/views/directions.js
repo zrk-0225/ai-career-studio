@@ -20,7 +20,9 @@ AICS.Views = AICS.Views || {};
     for (var i = 1; i <= 5; i++) {
       out += '<span class="dot' + (i <= full ? ' is-on' : '') + '"></span>';
     }
-    return '<span class="dots" title="需求热度 ' + v + ' / 5">' + out + '</span>';
+    /* 标注"估算"：这个分数是编的，写成 4.5 已经很像实测值了，
+       悬停提示里必须说清楚，否则它和真正有出处的兴趣画像是同一种呈现方式 */
+    return '<span class="dots" title="需求热度 ' + v + ' / 5（估算值，非官方统计）">' + out + '</span>';
   }
 
   function thresholdTone(t) {
@@ -162,12 +164,20 @@ AICS.Views = AICS.Views || {};
           '</div>'
         : '';
 
+      /* 数据来源必须写在页面上，不能只写在讲解文档里。
+         这一页上除了兴趣画像来自 O*NET 实测数据，其余几项都是估的；
+         有出处和没出处混在一起显示、却不说明，读者会默认它们一样可靠。 */
+      var sourceNote = '<p class="muted" style="margin:-4px 0 16px">' +
+        '卡片上的能力要求、薪资、需求热度，参考公开的岗位信息和行业报告估计得出，不是官方统计；' +
+        '兴趣六型画像取自美国劳工部 O*NET 数据库的实测得分。' +
+        '它们用来比较方向之间的相对差异，不要当成绝对数值。</p>';
+
       return UI.pageHeader('AI 就业方向图谱',
           '七个方向覆盖技术、产品、科研三条线，每个都标了学历门槛',
           '<button class="btn" data-action="go-compare">' + UI.icon('scale') + ' 并排对比方向</button>' +
           (analysis ? '' : '<button class="btn btn--primary" data-action="go-assess">' +
             UI.icon('target') + ' 先做测评</button>')) +
-        hint + targetBanner +
+        sourceNote + hint + targetBanner +
         '<div class="dir-grid">' +
           AICS.DIRECTIONS.map(function (d) { return card(d, scoreMap[d.id]); }).join('') +
         '</div>';

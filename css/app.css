@@ -1296,6 +1296,47 @@ body.nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 }
 .practice-ask--done .icon { width: 13px; height: 13px; }
 
+/* ---------- 拆成待办：就展开在任务那一行里 ----------
+
+   原来用的是弹窗。弹窗每开一次就把整张列表盖住一次，关掉之后还要
+   重新找回刚才看到哪了——大一那一栏有 9 条，来回几次就烦了。
+   改成原地展开之后，剩下的几条一直在眼前，能连着拆。 */
+.split-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+}
+/* 标题框吃掉剩下的宽度；最小 220px，窄屏上会自动换行到下一排 */
+.split-form__title { flex: 1 1 220px; min-width: 0; }
+.split-form .date-field { flex: 0 0 auto; width: 168px; }
+.split-form .btn,
+.split-form .link-btn { flex: 0 0 auto; }
+/* 普通文字链的点击区只有 26px 宽，手指点起来偏窄。
+   这个「取消」是常用动作，补一层内边距把它撑到 40px 以上。 */
+.split-form .link-btn { padding: 6px 10px; }
+/* 加入之后那句回执。位置不动，用户才知道刚才那行有下文了。
+   刻意**不共用** .split-form 这个类名——表单在不在，是靠
+   body.querySelector('.split-form') 判断的，回执要是也算进去，
+   加完第一条之后这条任务就再也打不开表单了。 */
+.split-done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border);
+  font-size: 11.5px;
+  color: var(--ok);
+}
+.split-done .icon { width: 13px; height: 13px; flex: 0 0 auto; }
+/* 表单开着的时候，把行尾那个「拆成待办」收起来——
+   同一行不该同时出现两个入口 */
+.road-task__split.is-hidden { display: none; }
+
 /* ---------- 四年规划的个性化说明 ---------- */
 
 .plan-note { margin-bottom: 18px; }

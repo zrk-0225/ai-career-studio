@@ -46,7 +46,7 @@ window.AICS = window.AICS || {};
              只给档位（详见讲解文档 5.13）。第一屏就承诺一个后面给不出的东西，
              用户走完 38 道题会觉得被耍了。 */
           '<div><strong>七个 AI 就业方向里，你分别适合哪些</strong>' +
-          '<em>用你的兴趣、能力和工作偏好算出来的，不是拍脑袋</em></div>' +
+          '<em>依据你的兴趣、能力和工作偏好计算得出</em></div>' +
         '</div>' +
         '<div class="wizard__point">' +
           '<span class="wizard__point-icon">' + UI.icon('chart') + '</span>' +
@@ -67,7 +67,7 @@ window.AICS = window.AICS || {};
     return '<div class="wizard__hero">' +
         '<div class="wizard__logo wizard__logo--ok">' + UI.icon('lock') + '</div>' +
         '<h2>你的数据只存在你自己的电脑上</h2>' +
-        '<p class="wizard__lead">在你开始填任何东西之前，先把这件事说清楚。</p>' +
+        '<p class="wizard__lead">下面四条是这个工作台处理数据的方式。</p>' +
       '</div>' +
       '<ul class="privacy-list">' +
         '<li>' + UI.icon('check') + '<span><strong>不上传服务器</strong>：' +
@@ -75,7 +75,10 @@ window.AICS = window.AICS || {};
         '<li>' + UI.icon('check') + '<span><strong>不用注册</strong>：' +
           '没有账号、没有手机号、没有埋点统计</span></li>' +
         '<li>' + UI.icon('check') + '<span><strong>断网也能用</strong>：' +
-          '整个程序是离线的，没网一样正常跑</span></li>' +
+          /* 原来写的是"整个程序是离线的，没网一样正常跑"，
+             和下一页那句"可以填 API Key 接入在线模型"打架。
+             离线的是测评、匹配、规划这些主体功能，助手配了 Key 就要联网。 */
+          '测评、匹配、规划这些功能都在本地运行，断网也能用（在线 AI 助手需要联网）</span></li>' +
         /* 数据备份/清空在「设置」弹窗里，不在「我的规划书」——
            这一页只产出规划书本身。写错地方会让新用户去规划书页白找一圈。 */
         '<li>' + UI.icon('check') + '<span><strong>随时能走</strong>：' +
@@ -92,7 +95,7 @@ window.AICS = window.AICS || {};
     return '<div class="wizard__hero">' +
         '<div class="wizard__logo wizard__logo--accent">' + UI.icon('user') + '</div>' +
         '<h2>最后一步：你在哪个阶段？</h2>' +
-        '<p class="wizard__lead">年级不是随便填的标签，<strong>它会改变匹配算法的权重</strong>。</p>' +
+        '<p class="wizard__lead"><strong>年级会影响匹配时各项能力的权重</strong>，所以这一步必填。</p>' +
       '</div>' +
       '<div class="form-grid">' +
         '<label class="form-grid__full">年级 <span class="required">必填</span>' +

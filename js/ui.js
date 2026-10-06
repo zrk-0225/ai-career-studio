@@ -216,13 +216,18 @@ window.AICS = window.AICS || {};
     return tone('danger');
   }
 
-  /* 按匹配度给一句人话评价 */
+  /* 按匹配度给一句人话说明。
+
+     后两档原来写的是「需要补不少」「不太建议」——那已经不是在描述分数，
+     是在替学生下结论了。这个工具从头到尾只给档位、不给名次，理由就是
+     分数本身有误差；那么"不建议你走这个方向"这种话更不能由它来说。
+     这几句会写进导出的规划书，老师也会看到，措辞必须是可核对的。 */
   function scoreLabel(score) {
     if (score >= 80) return '高度契合';
     if (score >= 65) return '比较契合';
-    if (score >= 50) return '可以尝试';
-    if (score >= 35) return '需要补不少';
-    return '不太建议';
+    if (score >= 50) return '基本匹配';
+    if (score >= 35) return '差距较大';
+    return '差距明显';
   }
 
   /* ---------- 日期选择框 ----------

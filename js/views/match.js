@@ -351,7 +351,7 @@ AICS.Views = AICS.Views || {};
     return '<button class="duel-card" data-action="duel-pick" data-id="' + dir.id + '">' +
       '<span class="duel-card__name">' + UI.esc(dir.name) + '</span>' +
       '<span class="duel-card__scene">' + UI.esc(sceneOf(dir.id, seenTimes)) + '</span>' +
-      '<span class="duel-card__cta">更想做这个</span>' +
+      '<span class="duel-card__cta">这个我更愿意做</span>' +
     '</button>';
   }
 
@@ -369,8 +369,8 @@ AICS.Views = AICS.Views || {};
     if (!d.picks.length) {
       return '<div class="panel duel">' +
         '<div class="panel__head"><h3>对比做完了</h3></div>' +
-        '<p class="muted">这几轮你都选了「说不清」。这说明这些事你还没有真实的偏好，' +
-          '先别急着定方向。现在硬选一个，过两个月多半还要改。</p>' +
+        '<p class="muted">这几轮你都跳过了。这说明你对这些工作内容还没有形成明确的偏好，' +
+          '不必急于确定方向。勉强选一个，之后调整的可能性也比较大。</p>' +
         '<p class="muted">更值得做的是：去「方向图谱」把每个方向具体做什么看一遍，' +
           '或者找一件相关的小事动手做一次。做过之后再来比，会容易得多。</p>' +
         '<div class="duel__actions">' +
@@ -402,10 +402,11 @@ AICS.Views = AICS.Views || {};
     var top = AICS.Directions.byId(rk.top);
     return '<div class="panel duel">' +
       '<div class="panel__head"><h3>对比做完了</h3></div>' +
-      '<p>' + d.round + ' 轮里，「<strong>' + UI.esc(top.name) + '</strong>」赢下 ' +
-        (d.wins[rk.top] || 0) + ' 次，是这几个里最突出的。</p>' +
-      '<p class="muted">这几个方向的匹配度本来就分不开，系统给不出答案，所以让你来选。' +
-        '结果是你自己定的，不是它算的。</p>' +
+      /* 说事实：你在几轮里选了这个方向几次。不说"它最突出"——
+         那是替读者下评价，而这几轮的选择本来就只够说明倾向。 */
+      '<p>' + d.round + ' 轮里，「<strong>' + UI.esc(top.name) + '</strong>」被选了 ' +
+        (d.wins[rk.top] || 0) + ' 次，是你选得最多的一个。</p>' +
+      '<p class="muted">结果来自你这几轮的选择，不是系统算的。</p>' +
       '<div class="duel__actions">' +
         '<button class="btn btn--primary" data-action="set-target" data-id="' + top.id + '">' +
           UI.icon('target') + ' 把「' + UI.esc(top.name) + '」设为目标方向</button>' +
@@ -431,8 +432,8 @@ AICS.Views = AICS.Views || {};
         '<div class="panel__head"><h3>还在纠结选哪个？</h3></div>' +
         '<p class="muted">这一档有 <strong>' + n + ' 个方向</strong>，' +
           '分数上分不出高低，它们的差距本来就小于测评误差。</p>' +
-        '<p class="muted">换个问法：<strong>下面这两件事，你更愿意做哪件？</strong>' +
-          '凭第一感觉点就行。</p>' +
+        '<p class="muted">分数上分不出高低，所以换个问法：<strong>下面写的是各自平时的工作内容，你更愿意做哪个？</strong>' +
+          '凭第一感觉点，' + DUEL_ROUNDS + ' 轮大概 1 分钟。</p>' +
         '<div class="duel__actions">' +
           '<button class="btn btn--primary" data-action="duel-start">' +
             UI.icon('compass') + ' 开始对比（' + DUEL_ROUNDS + ' 轮）</button>' +
@@ -448,8 +449,8 @@ AICS.Views = AICS.Views || {};
 
     return '<div class="panel duel">' +
       '<div class="panel__head">' +
-        '<div><h3>你更愿意做哪件？</h3>' +
-        '<p class="muted">别想太多，凭第一感觉选。</p></div>' +
+        '<div><h3>这两个方向，你更愿意做哪个？</h3>' +
+        '<p class="muted">下面写的是各自平时的工作内容，凭第一感觉点就行。</p></div>' +
         /* 用 limit 而不是常量：点过「再比几轮」之后总轮数会变大 */
         '<span class="duel__progress">第 ' + (duel.round + 1) + ' / ' + duel.limit + ' 轮</span>' +
       '</div>' +
@@ -458,7 +459,7 @@ AICS.Views = AICS.Views || {};
         duelCard(b, duel.played[b.id] || 0) +
       '</div>' +
       '<div class="duel__foot">' +
-        '<button class="link-btn" data-action="duel-skip">这两件我都不想 / 说不清</button>' +
+        '<button class="link-btn" data-action="duel-skip">两个都不想选，跳过这轮</button>' +
       '</div>' +
     '</div>';
   }
@@ -573,7 +574,7 @@ AICS.Views = AICS.Views || {};
          改成共用标题之后：两块无条件属于同一个模块，也不需要任何方位描述。 */
       '<div class="match-block">' +
         '<h4>能力对比 <em class="chart-weight">本年级权重 ' + wp.ability + '</em>' +
-          '<span class="match-block__hint">同一组数据的两种看法：' +
+          '<span class="match-block__hint">' +
             '图看差距的形状，数看每一项差多少</span></h4>' +
         '<div class="match-charts">' +
           '<div class="match-chart">' +
@@ -622,8 +623,7 @@ AICS.Views = AICS.Views || {};
           /* 这一栏刻意保留一位小数：它是给人对账用的，
              取整之后"三项加权怎么得出总分"就对不上了。
              页面上其他所有分数都是整数。 */
-          '<p class="rank-note">下面三项保留一位小数，是为了让你能自己对一遍加权过程；' +
-            '页面上其他地方显示的都是取整后的结果。</p>' +
+          '<p class="rank-note">下面三项保留一位小数，页面上其他地方显示的都是整数。</p>' +
           '<div class="algo__parts">' +
             '<div><b>能力匹配度 ' + r.abilityScore + '</b>（本年级权重 ' + wp.ability + '）' +
               '<p>先逐维度算「岗位要求 − 你的自评」，只算没达到的部分；再按岗位对各能力的看重程度加权平均，' +
@@ -636,7 +636,7 @@ AICS.Views = AICS.Views || {};
               '比如你偏好独立攻坚，而这个方向需要大量协作，这一项就会拉低。</p></div>' +
             '<div><b>作答一致性 ' + (analysis.consistency ? analysis.consistency.score : '—') +
               '</b>（本次档位宽度 ' + analysis.bandGap + ' 分）' +
-              '<p>偏好部分三个轴各有一正一反两道题，问的其实是同一件事的两面。' +
+              '<p>偏好部分三个轴各有一正一反两道题，两题测量的是同一特质的两个方向。' +
               '两个答案落到轴的两侧，就说明这次作答前后不一致。' +
               '一致性高时档位用默认的 ' + AICS.Calc.BAND_GAP + ' 分，低时放宽。' +
               '作答本身不稳的时候，把方向分得更细只是在制造假精度。</p></div>' +

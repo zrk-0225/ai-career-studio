@@ -462,7 +462,7 @@ AICS.Views = AICS.Views || {};
           delete pendingAsks[pvId];
           var ask = pv.closest('.practice-ask');
           if (ask) ask.outerHTML = practiceDoneHtml(pv.getAttribute('data-level'));
-          UI.toast('记下了。下次做测评时，这个维度可以按实际情况重新估', 'success');
+          UI.toast('已记下', 'success');
           return;
         }
         var ps = e.target.closest('[data-action="practice-skip"]');
@@ -477,25 +477,33 @@ AICS.Views = AICS.Views || {};
            不拦住的话点一下会连带把这条规划任务勾上 */
         var sp = e.target.closest('[data-action="split-task"]');
         if (sp) {
-          var sid = sp.getAttribute('data-id');
-          var found = null, foundYear = '';
-          stages.forEach(function (s) {
-            s.tasks.forEach(function (x) {
-              if (x.id === sid) { found = x; foundYear = s.year; }
-            });
-          });
-          if (found) splitTask(found, foundYear);
+          var hit = findPlanTask(stages, sp.getAttribute('data-id'));
+          if (hit) openSplit(sp.closest('.road-task'), hit.task);
+          return;
+        }
+
+        /* 拆解表单里的两个按钮，同理要拦在 toggle 前面 */
+        if (e.target.closest('[data-action="split-ok"]')) {
+          var okRow = e.target.closest('.road-task');
+          var okHit = findPlanTask(stages, okRow.getAttribute('data-id'));
+          commitSplit(okRow, okHit ? okHit.year : '', okHit ? okHit.task.pri : 'mid');
+          return;
+        }
+        if (e.target.closest('[data-action="split-cancel"]')) {
+          closeSplit(e.target.closest('.road-task'));
           return;
         }
 
         var row = e.target.closest('[data-action="toggle-road"]');
         if (!row) return;
 
-        /* 「做到什么程度了」那一行整个嵌在可勾选的行里，凡是落在它里面的
-           点击都不该被当成勾选。上面两个分支只认按钮本身，
-           而回答之后这一行会变成一句回执（按钮没了），
+        /* 「做到什么程度了」和「拆成待办」这两块整个嵌在可勾选的行里，
+           凡是落在它们里面的点击都不该被当成勾选。
+           上面几个分支只认按钮本身，而它们之后会变成一句回执（按钮没了），
            没有这道兜底，双击的第二次就会把任务取消掉。 */
-        if (e.target.closest('.practice-ask')) return;
+        if (e.target.closest('.practice-ask') ||
+            e.target.closest('.split-form') ||
+            e.target.closest('.split-done')) return;
 
         var id = row.getAttribute('data-id');
         var map = Object.assign({}, AICS.Store.get().roadmap);
@@ -564,6 +572,24 @@ AICS.Views = AICS.Views || {};
         var title = titleEl ? titleEl.textContent : '';
         var synced = AICS.syncTaskFromRoadmap(title, nowDone);
         if (synced) UI.toast(nowDone ? '已完成，看板里的同名任务同步更新了' : '已取消，看板里的同名任务同步更新了');
+      });
+
+      /* 拆解表单里的键盘操作。回车直接加入是这套交互快起来的关键——
+         连着拆七八条的时候，手不用在键盘和鼠标之间来回换。 */
+      root.addEventListener('keydown', function (e) {
+        var inp = e.target.closest && e.target.closest('.split-form__title');
+        if (!inp) return;
+        var row = inp.closest('.road-task');
+        if (!row) return;
+
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var hit = findPlanTask(stages, row.getAttribute('data-id'));
+          commitSplit(row, hit ? hit.year : '', hit ? hit.task.pri : 'mid');
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeSplit(row);
+        }
       });
     }
   };
@@ -883,50 +909,92 @@ AICS.Views = AICS.Views || {};
      和「看完吴恩达第 3 周视频」之间差的就是人的判断，
      而这个判断只有用户自己能做。 */
 
-  function splitTask(task, stageYear) {
-    UI.modal({
-      key: 'split-task',
-      title: '拆成待办',
-      html: '<div class="form-grid">' +
-          '<label class="form-grid__full">具体要做什么' +
-            '<input type="text" id="split-title" class="input" maxlength="60" value="' +
-              UI.esc(task.title) + '">' +
-          '</label>' +
-          '<label>截止日期' +
-            UI.dateField('split-due', 'input', '', '可以先不填', '可直接输入') + '</label>' +
-        '</div>' +
-        '<p class="muted" style="margin-top:12px">' +
-          '上面预填的是规划里的原话。改成<strong>能直接动手</strong>的动作会更有用，' +
-          '一个学期级别的目标通常要拆成两三件。' +
-        '</p>',
-      actions: [
-        { text: '取消' },
-        {
-          text: '加到看板',
-          type: 'primary',
-          onClick: function (wrap) {
-            var title = (wrap.querySelector('#split-title').value || '').trim();
-            if (!title) { UI.toast('写点内容再加', 'error'); return false; }
-            /* 重复时不关弹窗——让用户直接改标题再存，比关掉重来省一步 */
-            if (!addToBoard(title, stageYear, task.pri, wrap.querySelector('#split-due').value || '')) {
-              UI.toast('看板里已经有「' + title + '」了，改一下再加', 'error');
-              return false;
-            }
-            UI.toast('已加到看板', 'success', {
-              text: '去看板',
-              onClick: function () { AICS.App.navigate('kanban'); }
-            });
-          }
-        }
-      ],
-      onMount: function (wrap) {
-        UI.syncDateFields(wrap);
-        var inp = wrap.querySelector('#split-title');
-        /* 光标落在输入框里、文字全选——预填的是原话，多半要改，
-           全选之后直接敲就是替换，不用先手动删一遍 */
-        if (inp) { inp.focus(); inp.select(); }
-      }
+  /* 拆解表单做成"就在这一行里展开"，不是弹窗。
+
+     原来用的是弹窗，实测太慢：一个大一栏有 9 条，每拆一条就弹一次，
+     整个列表被盖住一次，关掉之后还得重新找回刚才看到哪了。
+     慢的不是打字，是每一条都要开一次弹窗、视线被弹走一次。
+
+     原地展开之后：不遮挡，剩下几条一直在眼前；标题框里按回车直接加入，
+     手不用离开键盘；加完那行就地变成一句回执。
+
+     预填原话是因为多半要在它基础上改，进去就全选，
+     敲第一个字即是替换，不用先手动删一遍。 */
+  function splitForm(task) {
+    return '<div class="split-form">' +
+      '<input type="text" class="input split-form__title" maxlength="60" value="' +
+        UI.esc(task.title) + '" placeholder="改成能直接动手的一件事">' +
+      UI.dateField('split-due-' + task.id, 'input split-form__due', '', '截止日期（可以先不填）', '可直接输入') +
+      '<button class="btn btn--primary btn--sm" data-action="split-ok">加入看板</button>' +
+      '<button class="link-btn" data-action="split-cancel">取消</button>' +
+    '</div>';
+  }
+
+  function openSplit(row, task) {
+    var body = row.querySelector('.road-task__body');
+    /* 判断"已经开着"只能认 .split-form 本身。回执用的是另一个类名——
+       共用一个类名的话，加完第一条之后这条任务就再也打不开表单了
+       （被当成"已经开着"直接 return），而它明明还能接着拆第二件。 */
+    if (!body || body.querySelector('.split-form')) return;
+    body.insertAdjacentHTML('beforeend', splitForm(task));
+    /* 表单开着的时候把外面那个按钮收起来，免得同一行出现两个入口 */
+    var btn = row.querySelector('.road-task__split');
+    if (btn) btn.classList.add('is-hidden');
+    UI.syncDateFields(body);
+    var inp = body.querySelector('.split-form__title');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+
+  function closeSplit(row) {
+    var form = row.querySelector('.split-form');
+    if (form && form.parentNode) form.parentNode.removeChild(form);
+    var btn = row.querySelector('.road-task__split');
+    if (btn) btn.classList.remove('is-hidden');
+  }
+
+  /* 提交。标题空着或者和看板里重名，都不关表单——
+     让用户就地改一下再提交，比关掉重来省一步。 */
+  function commitSplit(row, stageYear, priority) {
+    var form = row && row.querySelector('.split-form');
+    if (!form) return;
+    var inp = form.querySelector('.split-form__title');
+    var title = (inp.value || '').trim();
+    if (!title) {
+      UI.toast('写点内容再加', 'error');
+      inp.focus();
+      return;
+    }
+    if (boardHas(title)) {
+      UI.toast('看板里已经有「' + title + '」了，改一下再加', 'error');
+      inp.focus(); inp.select();
+      return;
+    }
+    var due = form.querySelector('input[type="date"]').value || '';
+    addToBoard(title, stageYear, priority, due);
+
+    /* 上一次的回执先撤掉，免得同一条任务下面积好几行 */
+    var oldDone = row.querySelector('.split-done');
+    if (oldDone && oldDone.parentNode) oldDone.parentNode.removeChild(oldDone);
+
+    form.outerHTML = '<div class="split-done">' + UI.icon('check') +
+      '<span>已加入看板：「' + UI.esc(title) + '」</span></div>';
+    /* 按钮要放出来：一条学期级的目标通常要拆成两三件，
+       拆完一件还得能接着拆下一件 */
+    var btn = row.querySelector('.road-task__split');
+    if (btn) btn.classList.remove('is-hidden');
+    UI.toast('已加入看板', 'success', {
+      text: '去看板',
+      onClick: function () { AICS.App.navigate('kanban'); }
     });
+  }
+
+  /* 按 id 找出这条规划任务，以及它属于哪个学年 */
+  function findPlanTask(stages, id) {
+    var hit = null;
+    stages.forEach(function (s) {
+      s.tasks.forEach(function (t) { if (t.id === id) hit = { task: t, year: s.year }; });
+    });
+    return hit;
   }
 
   /* 看板里有没有同名的未完成任务。

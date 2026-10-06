@@ -163,8 +163,8 @@ window.AICS = window.AICS || {};
   /* 没匹配上时的兜底回答，顺便把能聊的话题列出来 */
   function fallbackAnswer() {
     var topics = AICS.KB.slice(0, 12).map(function (e) { return '- ' + e.title; }).join('\n');
-    return '这个问题我暂时没有把握给你一个可靠的回答，不敢乱说。\n\n' +
-      '你可以试试问我下面这些我比较擅长的话题：\n\n' + topics +
+    return '这个问题我暂时没有可靠的信息来源，给不出准确回答。\n\n' +
+      '下面这些话题我准备得比较充分：\n\n' + topics +
       '\n\n或者换个说法再问一次，我会尽力帮你分析。';
   }
 
@@ -268,7 +268,7 @@ window.AICS = window.AICS || {};
       return '- **' + g.name + '**：你自评 ' + g.mine + ' 分，要求 ' + g.need +
         ' 分，还差 **' + g.gap + ' 分**';
     }).join('\n') +
-    '\n\n这些分数都是你自评的，跟岗位要求比出来的。看个大体方向就行，别当判决书。\n\n' +
+    '\n\n这些分数都是你自评的，与岗位要求对比得出。可以用来看大体方向，不适合当作结论。\n\n' +
     '每一项具体怎么补，在「匹配诊断」的差距明细里。';
   }
 
@@ -283,7 +283,7 @@ window.AICS = window.AICS || {};
         '一张架构图。面试和复试问的都是这个。';
     }
 
-    return '按' + basisOf(analysis) + '，最该先补的是这 ' + pri.length + ' 项：\n\n' +
+    return '按' + basisOf(analysis) + '，优先补齐的是这 ' + pri.length + ' 项：\n\n' +
       pri.map(function (g, i) {
         return (i + 1) + '. **' + g.name + '**（还差 ' + g.gap + ' 分）：' +
           (AICS.DIM_ADVICE[g.key] || '');

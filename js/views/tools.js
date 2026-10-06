@@ -149,7 +149,7 @@ AICS.Views = AICS.Views || {};
       var chatCount = (state.chat || []).length;
 
       var head = UI.pageHeader('AI 职业规划助手',
-        '回答会结合你的测评结果，不是通用套话',
+        '回答会结合你的测评结果',
         '<button class="btn" data-action="open-settings">' + UI.icon('settings') + ' 助手设置</button>');
 
       var modeBanner = online

@@ -40,7 +40,7 @@ window.AICS = window.AICS || {};
     {
       year: '大一',
       theme: '打地基',
-      goal: '把数学和编程两块地基砸实，同时搞清楚 AI 到底有哪些方向。',
+      goal: '把数学和编程两块基础打好，同时了解 AI 有哪些方向。',
       color: '#4dd0e1',
       tasks: [
         { id: 'y1t1', pri: 'high', title: '高数 / 线代 / 概率统计拿到良好以上', desc: 'GPA 是保研的硬门槛，大一的课最不能放' },
@@ -56,7 +56,7 @@ window.AICS = window.AICS || {};
           desc: '有的学校先教 Python，有的先教 C++。学哪门不影响，标准是一样的：脱离教材也能从空白文件写出能跑的程序' },
         { id: 'y1t7', pri: 'mid', title: '把 Python 接上（学校不教就自己补）',
           desc: 'AI 的工具链几乎全在 Python 上，这门语言躲不开。大一教的不是它的话，趁这个暑假补最划算。有编程底子的人两三周就能上手，不用从头学' },
-        { id: 'y1t3', pri: 'mid',  title: '装一次 Linux（双系统或虚拟机），习惯命令行', desc: '后面所有 AI 工具链都跑在 Linux 上' },
+        { id: 'y1t3', pri: 'mid',  title: '装一次 Linux（双系统或虚拟机），习惯命令行', desc: 'AI 的训练与部署工具在 Linux 上支持最完整' },
         { id: 'y1t4', pri: 'mid',  title: '完整了解 AI 的七个就业方向', desc: '知道每个方向做什么、要什么能力，才好定目标' },
         { id: 'y1t5', pri: 'low',  title: '至少参加一次校级竞赛或加入一个技术社团', desc: '大一就开始积累"我做过什么"' },
         { id: 'y1t6', pri: 'mid',  title: '把英语四级拿下，开始读英文技术文档', desc: 'AI 领域的一手资料几乎全是英文' }
@@ -65,7 +65,7 @@ window.AICS = window.AICS || {};
     {
       year: '大二',
       theme: '入门技术',
-      goal: '把机器学习吃透，做出第一个能拿得出手的项目。',
+      goal: '掌握机器学习经典算法，做出第一个完整项目。',
       color: '#7c5cff',
       tasks: [
         { id: 'y2t1', pri: 'high', title: '系统学完机器学习经典算法并手推一遍', desc: '线性回归、逻辑回归、决策树、SVM、聚类，理解比会调包重要' },
@@ -81,7 +81,7 @@ window.AICS = window.AICS || {};
     {
       year: '大三',
       theme: '方向深耕',
-      goal: '锁定一个方向做深，拿到实习或科研产出，这是四年里最关键的一年。',
+      goal: '收窄到一个方向做深，拿到实习或科研产出。这一年往往决定大四的起点。',
       color: '#ffb020',
       tasks: [
         { id: 'y3t1', pri: 'high', title: '确定主攻方向，并制定该方向的能力补齐计划', desc: '用工作台的匹配诊断做依据，别再摇摆' },
@@ -92,7 +92,7 @@ window.AICS = window.AICS || {};
         /* ↓ 分岔点一：大三暑假怎么用，两条路完全不同 ↓
            三版都是 high——大三暑假只有一次，而且直接决定大四的起点 */
         { id: 'y3t5', track: 'job', pri: 'high', title: '拿到一段暑期实习',
-          desc: '这是秋招最硬的敲门砖，没有之一' },
+          desc: '实习经历在秋招简历筛选中的分量，通常高于竞赛和课程成绩' },
         { id: 'y3t5g', track: 'grad', pri: 'high', title: '保研就冲夏令营，考研就进入强化复习',
           desc: '保研的夏令营集中在 5~7 月；考研的暑假是拉开差距的关键期，别浪费' },
         { id: 'y3t5u', track: 'undecided', pri: 'high', title: '实习和备考各试一段，用这个暑假做最后判断',
@@ -105,7 +105,7 @@ window.AICS = window.AICS || {};
     {
       year: '大四',
       theme: '冲刺落地',
-      goal: '把前三年的积累兑现成 offer、录取通知书或毕业设计。',
+      goal: '把前三年的积累落实成 offer、录取通知或毕业设计。',
       color: '#00e5a0',
       tasks: [
         /* ↓ 分岔点二：大四的主线任务，两条路完全不同 ↓
@@ -226,7 +226,7 @@ window.AICS = window.AICS || {};
     deploy: {
       fresh:  { title: '把命令行变成日常习惯', desc: '装上不算，日常的文件操作都在终端里完成才算' },
       mid:    { title: '学会 Git 和 Docker', desc: '代码能版本管理，环境能打包带走，这两样不会的话项目没法给别人' },
-      senior: { title: '把自己的项目真正部署起来', desc: '有一个能点开的线上地址，比简历上写十行"熟悉部署"都管用' }
+      senior: { title: '把自己的项目真正部署起来', desc: '做出一个能点开的线上地址，就是部署能力的证明' }
     },
     product: {
       fresh:  { title: '用 AI 产品时多问一句"它解决了谁的什么问题"', desc: '随手记录使用感受，产品 sense 是这么一点点攒的' },

@@ -100,7 +100,7 @@ AICS.Views = AICS.Views || {};
     var band = analysis.topBand;
     var names = band.items.map(function (r) { return r.name; });
     if (analysis.bands.length === 1) {
-      return '这次测评没有把任何一个方向明显区分出来——七个方向都落在同一档。' +
+      return '这次测评没有把任何一个方向明显区分出来，七个方向都落在同一档。' +
              '不用纠结排名，先按「方向图谱」把每个方向了解一遍。<br>';
     }
     if (names.length === 1) {
@@ -171,7 +171,7 @@ AICS.Views = AICS.Views || {};
 
   AICS.Views.assess = {
     title: '自我认知',
-    desc: '一切分析的数据源头，大约 12 分钟',
+    desc: '做完这份，其他页面的分析才有数据，大约 12 分钟',
 
     render: function () {
       counter = 0;   // 每次重新渲染都要重置编号
@@ -182,7 +182,7 @@ AICS.Views = AICS.Views || {};
       var complete = answered === total;
 
       var head = UI.pageHeader('自我认知测评',
-        '诚实地评估自己，结果才对你真正有用。自评题会跟着你的年级变',
+        '按实际情况选就行，自评题会跟着你的年级变',
         /* 一题都没答的时候不显示「清空重答」——
            第一次进来的人看到这个按钮会纳闷"我要清空什么"，
            点下去还弹"确定要清空所有测评答案重新来过吗"，更容易慌。

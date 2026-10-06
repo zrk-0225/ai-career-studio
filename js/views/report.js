@@ -620,7 +620,7 @@ AICS.Views = AICS.Views || {};
     /* 计算依据 */
     html += '<section class="report-section">' +
       '<h2>二、匹配度计算依据</h2>' +
-      '<p class="report-lead">匹配度不是拍脑袋给的，是三项加权算出来的。' +
+      '<p class="report-lead">匹配度由三项测评加权计算得出。' +
         '权重会跟着年级变——你现在填的是「<strong>' + UI.esc(analysis.year || '未填写') + '</strong>」，' +
         UI.esc(analysis.yearReason) + '。</p>' +
       '<table class="report-table"><thead><tr><th>分项</th><th>本年级权重</th><th>含义</th></tr></thead><tbody>' +

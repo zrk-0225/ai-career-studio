@@ -50,8 +50,8 @@ AICS.Views = AICS.Views || {};
           '<div class="about-who__text">' +
             '<h2>zrk</h2>' +
             '<p>人工智能专业在读。这个工作台是课程作业，' +
-              '做给和我一样在方向选择上发懵的同学——' +
-              '不知道有哪些方向、不知道选哪个、不知道差在哪、不知道怎么补。</p>' +
+              '做给和我一样还没想清楚方向的同学：' +
+              '不清楚有哪些方向、该选哪个、自己差在哪、该怎么补。</p>' +
           '</div>' +
         '</div>';
 
@@ -72,9 +72,6 @@ AICS.Views = AICS.Views || {};
             duty('AI 做的', 'ai', '起草文档') +
             duty('AI 做的', 'ai', '提出算法方案和界面方案，供我选择') +
           '</ul>' +
-          '<p class="muted about-foot">所以准确的说法是：' +
-            '这个作品<strong>要做什么、做成什么样，是我判断的</strong>；' +
-            '把它写出来，是在 AI 工具的协助下完成的。</p>' +
         '</div>';
 
       var links = '<div class="panel">' +
@@ -82,8 +79,7 @@ AICS.Views = AICS.Views || {};
           linkRow('target', '在线访问', SITE,
             '电脑和手机都能直接打开，不用装任何东西。') +
           linkRow('file', '源码仓库', REPO,
-            '仓库里有完整的提交记录——每一次改动、改了什么、什么时候改的都在里面，' +
-            '比任何说明文字都更能说明它是怎么做出来的。') +
+            '仓库里有完整的提交记录，可以看到每一次改动的时间和内容。') +
         '</div>';
 
       var tech = '<div class="panel">' +
@@ -95,9 +91,7 @@ AICS.Views = AICS.Views || {};
               '所以双击 index.html 就能跑，断网也能用</li>' +
             '<li>数据存在浏览器本地，不上传任何服务器</li>' +
           '</ul>' +
-          '<p class="muted about-foot">' +
-            '当前版本 <code>' + UI.esc(AICS.BUILD) + '</code>，' +
-            '和设置弹窗底部、控制台打印的是同一个号。</p>' +
+          '<p class="muted about-foot">当前版本 <code>' + UI.esc(AICS.BUILD) + '</code></p>' +
         '</div>';
 
       return head + '<div class="stack">' + who + split + links + tech + '</div>';
