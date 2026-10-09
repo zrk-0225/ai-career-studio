@@ -218,7 +218,12 @@ window.AICS = window.AICS || {};
 
       if (act === 'prev') { step = Math.max(0, step - 1); paint(); return; }
       if (act === 'skip') {
-        /* 跳过的话年级仍然是空的，后面分析页面会再次提醒 */
+        /* 跳过 = 已经知道向导存在、选择现在不填，记 onboarded 让 maybeShow
+           不再每次启动都重弹这三屏。
+           刻意不写 onboardedAt：年级还是空的，「填表超过一年」的过期提醒
+           （plan.js 按 onboardedAt 算）无从谈起，不该触发。
+           年级空值的提醒交给各分析页的横幅接手（匹配诊断页有「你还没填年级」）。 */
+        AICS.Store.set('profile', { onboarded: true });
         close();
         return;
       }

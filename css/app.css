@@ -2531,24 +2531,6 @@ mark {
 }
 .about-lead strong { color: var(--text); }
 
-/* 「我做的 / AI 做的」逐条对照。
-   左边一个短标签，右边一句话，标签列定宽所以右侧文字左边缘是对齐的。 */
-.duty-list { display: flex; flex-direction: column; gap: 10px; }
-.duty { display: flex; align-items: flex-start; gap: 10px; }
-.duty__tag {
-  flex: 0 0 auto;
-  min-width: 62px;
-  text-align: center;
-  padding: 3px 9px;
-  border-radius: 7px;
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.duty__tag--me { background: var(--accent-soft); color: var(--accent); }
-.duty__tag--ai { background: var(--chart-grid); color: var(--text-muted); }
-.duty__text { font-size: 13px; line-height: 1.65; color: var(--text-muted); padding-top: 2px; }
-
 .about-foot {
   margin-top: 14px;
   padding-top: 13px;

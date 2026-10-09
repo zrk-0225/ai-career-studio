@@ -22,7 +22,7 @@ window.AICS = window.AICS || {};
      因为它压根不是缓存问题，是另一个文件夹。
      现在设置弹窗底部和控制台都会打印这行字，打开一看就知道
      自己运行的是哪一版、要不要重新解压。 */
-  var BUILD = '2026-10-06.10';
+  var BUILD = '2026-10-09.1';
   AICS.BUILD = BUILD;
 
   /* 侧边栏导航配置，顺序就是显示顺序。
@@ -230,6 +230,19 @@ window.AICS = window.AICS || {};
           '</select></label>' +
         '</div>' +
       '</div>' +
+      /* 外观段：主题的唯一"看得见文字"的入口。
+         侧边栏底部那个图标按钮在手机上要先开汉堡菜单才露出来，
+         设置弹窗在顶栏直接可达，所以把选项放这里。 */
+      '<div class="form-section">' +
+        '<h4>外观</h4>' +
+        '<p class="muted">默认深色模式。切换后保存即生效，下次打开保持这个选择。</p>' +
+        '<div class="form-grid">' +
+          '<label class="switch"><input type="radio" name="f-theme" value="dark"' +
+            (s.theme === 'dark' ? ' checked' : '') + '><span>深色模式</span></label>' +
+          '<label class="switch"><input type="radio" name="f-theme" value="light"' +
+            (s.theme === 'light' ? ' checked' : '') + '><span>浅色模式</span></label>' +
+        '</div>' +
+      '</div>' +
       '<div class="form-section">' +
         '<h4>AI 助手配置</h4>' +
         '<p class="muted">不填也能用，助手会走内置的离线知识库。填写后可以接入真实大模型，回答会更个性化。</p>' +
@@ -264,6 +277,7 @@ window.AICS = window.AICS || {};
           onClick: function (wrap) {
             var oldYear = AICS.Store.get().profile.year;
             var newYear = wrap.querySelector('#f-year').value;
+            var oldTheme = AICS.Store.get().settings.theme;
 
             AICS.Store.set('profile', {
               name: (wrap.querySelector('#f-name').value || '').trim(),
@@ -271,18 +285,30 @@ window.AICS = window.AICS || {};
               major: (wrap.querySelector('#f-major').value || '').trim() || '人工智能',
               year: newYear
             });
+            /* 主题单选没勾中的话（理论上不会）退回打开弹窗时的值 */
+            var themeSel = wrap.querySelector('input[name="f-theme"]:checked');
+            var newTheme = themeSel ? themeSel.value : s.theme;
+
             AICS.Store.set('settings', {
               useApi: wrap.querySelector('#f-useapi').checked,
               apiBase: (wrap.querySelector('#f-apibase').value || '').trim(),
               apiModel: (wrap.querySelector('#f-apimodel').value || '').trim(),
-              apiKey: (wrap.querySelector('#f-apikey').value || '').trim()
+              apiKey: (wrap.querySelector('#f-apikey').value || '').trim(),
+              theme: newTheme
             });
+
+            /* 主题变了要立刻应用并重绘——和侧边栏那个切换按钮走同一套逻辑，
+               不重绘的话内联样式里的旧主题颜色会留着 */
+            var themeChanged = oldTheme !== newTheme;
+            if (themeChanged) applyTheme();
 
             /* 年级变了会影响匹配度权重，提醒一句。
                空值是有意义的状态（用户没填），直接拼进引号里会变成「」很难看 */
             if (oldYear !== newYear) {
               UI.toast('已保存。年级从「' + (oldYear || '未填写') + '」改为「' + (newYear || '未填写') +
                        '」，匹配度权重已重算');
+            } else if (themeChanged) {
+              UI.toast('已保存，并切换到' + (newTheme === 'dark' ? '深色' : '浅色') + '模式');
             } else {
               UI.toast('设置已保存', 'success');
             }
